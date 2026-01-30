@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#0D0D0F"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="24dp">
+
+        <!-- Header -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="24dp">
+            <TextView
+                android:id="@+id/btnBack"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:gravity="center"
+                android:text="←"
+                android:textSize="24sp"
+                android:textColor="#FFF"
+                android:background="@drawable/btn_circle" />
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="16dp"
+                android:text="Settings"
+                android:textColor="#FFF"
+                android:textSize="24sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <!-- Server Host -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Raspberry Pi IP Address"
+            android:textColor="#AAA"
+            android:textSize="14sp" />
+        <EditText
+            android:id="@+id/editServerHost"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:layout_marginTop="4dp"
+            android:layout_marginBottom="16dp"
+            android:paddingHorizontal="16dp"
+            android:background="@drawable/input_bg"
+            android:textColor="#FFF"
+            android:textColorHint="#666"
+            android:hint="192.168.1.100"
+            android:inputType="text" />
+
+        <!-- RTSP Port -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="RTSP Port"
+            android:textColor="#AAA"
+            android:textSize="14sp" />
+        <EditText
+            android:id="@+id/editRtspPort"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:layout_marginTop="4dp"
+            android:layout_marginBottom="16dp"
+            android:paddingHorizontal="16dp"
+            android:background="@drawable/input_bg"
+            android:textColor="#FFF"
+            android:textColorHint="#666"
+            android:hint="8554"
+            android:inputType="number" />
+
+        <!-- MQTT Port -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="MQTT Port"
+            android:textColor="#AAA"
+            android:textSize="14sp" />
+        <EditText
+            android:id="@+id/editMqttPort"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:layout_marginTop="4dp"
+            android:layout_marginBottom="24dp"
+            android:paddingHorizontal="16dp"
+            android:background="@drawable/input_bg"
+            android:textColor="#FFF"
+            android:textColorHint="#666"
+            android:hint="1883"
+            android:inputType="number" />
+
+        <!-- Test Status -->
+        <TextView
+            android:id="@+id/testStatus"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:visibility="gone"
+            android:textSize="14sp"
+            android:gravity="center"
+            android:layout_marginBottom="16dp" />
+
+        <!-- Buttons -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center">
+            <TextView
+                android:id="@+id/btnTest"
+                android:layout_width="0dp"
+                android:layout_height="48dp"
+                android:layout_weight="1"
+                android:layout_marginEnd="8dp"
+                android:gravity="center"
+                android:text="Test"
+                android:textColor="#FFF"
+                android:background="@drawable/btn_secondary" />
+            <TextView
+                android:id="@+id/btnSave"
+                android:layout_width="0dp"
+                android:layout_height="48dp"
+                android:layout_weight="1"
+                android:layout_marginStart="8dp"
+                android:gravity="center"
+                android:text="Save"
+                android:textColor="#FFF"
+                android:textStyle="bold"
+                android:background="@drawable/btn_rounded" />
+        </LinearLayout>
+
+    </LinearLayout>
+</ScrollView>

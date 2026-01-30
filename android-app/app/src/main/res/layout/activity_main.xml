@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#0D0D0F">
+
+    <androidx.media3.ui.PlayerView
+        android:id="@+id/playerView"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        app:use_controller="false"
+        app:resize_mode="zoom" />
+
+    <!-- Top Bar -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="16dp"
+        android:background="@drawable/gradient_top">
+        <View
+            android:id="@+id/connectionStatus"
+            android:layout_width="12dp"
+            android:layout_height="12dp"
+            android:background="@drawable/status_dot" />
+        <TextView
+            android:id="@+id/connectionStatusText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:textColor="#FFF"
+            android:text="Connecting..." />
+    </LinearLayout>
+
+    <!-- Bottom Bar -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:gravity="center"
+        android:padding="20dp"
+        android:background="@drawable/gradient_bottom">
+        <TextView
+            android:id="@+id/btnSettings"
+            android:layout_width="56dp"
+            android:layout_height="56dp"
+            android:gravity="center"
+            android:text="⚙️"
+            android:textSize="24sp"
+            android:background="@drawable/btn_circle" />
+        <TextView
+            android:id="@+id/btnMute"
+            android:layout_width="56dp"
+            android:layout_height="56dp"
+            android:layout_marginStart="16dp"
+            android:gravity="center"
+            android:text="🔊"
+            android:textSize="24sp"
+            android:background="@drawable/btn_circle" />
+    </LinearLayout>
+
+    <!-- Loading -->
+    <LinearLayout
+        android:id="@+id/loadingOverlay"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:gravity="center"
+        android:orientation="vertical"
+        android:background="#CC0D0D0F">
+        <ProgressBar
+            android:layout_width="64dp"
+            android:layout_height="64dp"
+            android:indeterminateTint="#E94560" />
+        <TextView
+            android:id="@+id/statusText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:textColor="#FFF"
+            android:text="Connecting..." />
+    </LinearLayout>
+
+    <!-- Error -->
+    <LinearLayout
+        android:id="@+id/errorOverlay"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:gravity="center"
+        android:orientation="vertical"
+        android:background="#CC0D0D0F"
+        android:visibility="gone">
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="⚠️"
+            android:textSize="48sp" />
+        <TextView
+            android:id="@+id/errorText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:textColor="#FFF"
+            android:gravity="center"
+            android:text="Connection failed" />
+        <TextView
+            android:id="@+id/btnRetry"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:paddingHorizontal="32dp"
+            android:paddingVertical="12dp"
+            android:text="Retry"
+            android:textColor="#FFF"
+            android:background="@drawable/btn_rounded" />
+    </LinearLayout>
+
+    <!-- Doorbell Alert -->
+    <LinearLayout
+        android:id="@+id/alertOverlay"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top"
+        android:layout_marginTop="60dp"
+        android:layout_marginHorizontal="24dp"
+        android:gravity="center"
+        android:padding="20dp"
+        android:background="@drawable/alert_bg"
+        android:elevation="16dp"
+        android:visibility="gone">
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="#FFF"
+            android:textSize="20sp"
+            android:textStyle="bold"
+            android:text="🔔 Someone is at the door!" />
+    </LinearLayout>
+
+</FrameLayout>
