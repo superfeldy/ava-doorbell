@@ -4,24 +4,37 @@ A full-stack doorbell and camera monitoring system for Raspberry Pi. Streams Dah
 
 ## Architecture
 
-```
-┌─────────────────────┐         ┌──────────────────────────────────┐
-│   Android Kiosk App │◄──WS──► │  Raspberry Pi (10.10.10.167)     │
-│   (CinemaActivity)  │         │                                  │
-│                     │◄─MQTT─► │  mosquitto         :1883         │
-│  WebView ──────────►│◄─HTTP──►│  ava-admin (FastAPI):5000/:5443  │
-│  NativeTalkManager ─┤◄──WS──► │  ava-talk (relay)  :5001         │
-│  DoorbellOverlay    │         │  go2rtc            :1984/:1985   │
-│  MqttManager        │         │  alarm-scanner     (poller)      │
-└─────────────────────┘         └───────────┬──────────────────────┘
-                                            │
-                                    RTSP/HTTP│
-                                            ▼
-                                ┌───────────────────────┐
-                                │  Dahua VTO Doorbell    │
-                                │  (10.10.10.187)        │
-                                │  RTSP :554  SDK :37777 │
-                                └───────────────────────┘
+```mermaid
+graph LR
+    subgraph Android["Android Kiosk App"]
+        CA[CinemaActivity]
+        WV[WebView]
+        NTM[NativeTalkManager]
+        DO[DoorbellOverlay]
+        MM[MqttManager]
+    end
+
+    subgraph Pi["Raspberry Pi"]
+        Admin["ava-admin :5000/:5443"]
+        Talk["ava-talk :5001"]
+        Go2rtc["go2rtc :1984/:1985"]
+        Alarm["alarm-scanner"]
+        MQTT["mosquitto :1883"]
+    end
+
+    subgraph Doorbell["Dahua VTO Doorbell"]
+        RTSP["RTSP :554"]
+        SDK["SDK :37777"]
+    end
+
+    WV -- "HTTP/WS" --> Admin
+    NTM -- "WebSocket" --> Talk
+    MM -- "MQTT" --> MQTT
+    Admin -- "WS proxy" --> Go2rtc
+    Talk -- "RTSP backchannel" --> RTSP
+    Alarm -- "HTTP long-poll" --> SDK
+    Alarm -- "publish" --> MQTT
+    Go2rtc -- "RTSP" --> RTSP
 ```
 
 ### Services
@@ -36,30 +49,32 @@ A full-stack doorbell and camera monitoring system for Raspberry Pi. Streams Dah
 
 ### Video Pipeline
 
-```
-Dahua Doorbell (RTSP :554)
-  → go2rtc (transcodes/proxies)
-    → ava-admin /api/ws-proxy (CORS-safe WebSocket proxy)
-      → Android WebView (WebRTC/MSE) or MJPEG fallback
+```mermaid
+graph LR
+    A["Dahua RTSP :554"] --> B["go2rtc"]
+    B --> C["ava-admin /api/ws-proxy"]
+    C --> D["Android WebView"]
+    D -. "fallback" .-> E["MJPEG polling"]
 ```
 
 ### Audio Pipeline (Two-Way Talk)
 
-```
-Android Mic (NativeTalkManager, 8kHz PCM16)
-  → WebSocket binary [0x01 + PCM data]
-    → ava-talk (smoothing → noise gate → AGC → soft limiter → G.711A encode)
-      → RTSP TCP interleaved → Dahua doorbell speaker
+```mermaid
+graph LR
+    A["Android Mic 8kHz PCM16"] --> B["NativeTalkManager"]
+    B -- "WS binary 0x01+PCM" --> C["ava-talk"]
+    C -- "smooth → gate → AGC → limit → G.711A" --> D["RTSP backchannel"]
+    D --> E["Doorbell speaker"]
 ```
 
 ### Event Pipeline
 
-```
-Dahua HTTP Event API (long-poll)
-  → alarm-scanner (parse + cooldown)
-    → MQTT doorbell/ring (QoS 1)
-      → Android MqttManager
-        → DoorbellOverlayService (chime + floating popup)
+```mermaid
+graph LR
+    A["Dahua HTTP Event API"] --> B["alarm-scanner"]
+    B -- "MQTT QoS 1" --> C["mosquitto"]
+    C --> D["MqttManager"]
+    D --> E["DoorbellOverlay + chime"]
 ```
 
 ## Project Structure
