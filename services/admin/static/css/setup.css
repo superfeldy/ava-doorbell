@@ -1,0 +1,490 @@
+/* ============================================================
+   AVA Doorbell v4.0 — Setup Wizard Styles
+   Glass wizard cards, progress dots, step transitions.
+   Requires: common.css
+   ============================================================ */
+
+body.setup-body {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #0a0a1a 0%, #12122a 40%, #1a0a20 100%);
+    padding: 20px;
+}
+
+body.setup-body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+        radial-gradient(ellipse 600px 400px at 30% 40%, rgba(233, 69, 96, 0.05), transparent),
+        radial-gradient(ellipse 500px 350px at 70% 60%, rgba(74, 222, 128, 0.03), transparent);
+    pointer-events: none;
+}
+
+.setup-container {
+    width: 100%;
+    max-width: 540px;
+    position: relative;
+}
+
+/* ----- Header + Progress ----- */
+.setup-header {
+    text-align: center;
+    margin-bottom: 28px;
+}
+
+.setup-header h1 {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 20px;
+}
+
+.progress-bar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+
+.progress-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    transition: all 0.3s ease;
+}
+
+.progress-dot.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    box-shadow: 0 0 10px var(--accent-glow);
+    transform: scale(1.2);
+}
+
+.progress-dot.completed {
+    background: var(--success);
+    border-color: var(--success);
+}
+
+/* ----- Step Cards ----- */
+.setup-step {
+    display: none;
+    background: rgba(255, 255, 255, 0.04);
+    backdrop-filter: blur(40px);
+    -webkit-backdrop-filter: blur(40px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 20px;
+    padding: 32px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+.setup-step.active {
+    display: block;
+    animation: slideUp 0.3s ease;
+}
+
+.setup-step h2 {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 12px;
+}
+
+.setup-step p {
+    color: var(--text-body);
+    font-size: 14px;
+    line-height: 1.6;
+    margin-bottom: 12px;
+}
+
+.setup-step ul {
+    list-style: none;
+    margin-bottom: 16px;
+    padding-left: 0;
+}
+
+.setup-step ul li {
+    color: var(--text-body);
+    font-size: 14px;
+    padding: 4px 0;
+    padding-left: 20px;
+    position: relative;
+}
+
+.setup-step ul li::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 10px;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+}
+
+.hint {
+    color: var(--text-dimmed) !important;
+    font-size: 13px !important;
+}
+
+/* ----- Form Sections ----- */
+.form-section {
+    margin-bottom: 24px;
+}
+
+.form-section h3 {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 12px;
+}
+
+.setup-step .form-group {
+    margin-bottom: 14px;
+}
+
+.setup-step .form-group label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-label);
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.setup-step input[type="text"],
+.setup-step input[type="password"] {
+    padding: 10px 14px;
+    font-size: 14px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+}
+
+/* ----- Info Box ----- */
+.info-box {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 10px;
+    padding: 16px;
+    margin-bottom: 16px;
+}
+
+.info-box p {
+    margin-bottom: 6px;
+}
+
+.info-box a {
+    color: var(--accent);
+    text-decoration: underline;
+    text-decoration-color: var(--accent-30);
+}
+
+.info-box a:hover {
+    text-decoration-color: var(--accent);
+}
+
+/* ----- Camera Results ----- */
+.results-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 10px;
+    margin-bottom: 16px;
+}
+
+.camera-result {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    padding: 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.camera-result .camera-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+}
+
+.camera-result .camera-type {
+    font-size: 11px;
+    color: var(--text-dimmed);
+    background: rgba(255, 255, 255, 0.05);
+    padding: 2px 8px;
+    border-radius: 4px;
+}
+
+/* ----- Preview Grid ----- */
+.preview-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 10px;
+    margin-bottom: 16px;
+}
+
+.preview-card {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.preview-card img {
+    width: 100%;
+    aspect-ratio: 16/9;
+    object-fit: cover;
+    display: block;
+    background: #111;
+}
+
+.preview-card span {
+    display: block;
+    padding: 8px 10px;
+    font-size: 12px;
+    color: var(--text-muted);
+    text-align: center;
+}
+
+/* ----- Error & Loading ----- */
+.error-message {
+    display: none;
+    background: rgba(244, 67, 54, 0.1);
+    border: 1px solid rgba(244, 67, 54, 0.3);
+    color: #ff8a8a;
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-size: 13px;
+    margin-bottom: 16px;
+    animation: slideUp 0.2s ease;
+}
+
+.loading-overlay {
+    display: none;
+    position: absolute;
+    inset: 0;
+    background: rgba(10, 10, 26, 0.8);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border-radius: 20px;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    z-index: 10;
+}
+
+.loading-overlay .spinner {
+    width: 28px;
+    height: 28px;
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+.loading-overlay .loading-text {
+    color: var(--text-muted);
+    font-size: 13px;
+}
+
+/* ----- Device Test Button + Status ----- */
+.test-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.btn-test {
+    padding: 6px 16px;
+    font-size: 12px;
+    border-radius: 6px;
+}
+
+.device-status {
+    font-size: 13px;
+    font-weight: 600;
+    transition: color 0.2s ease;
+}
+
+.device-status.testing {
+    color: var(--text-muted);
+}
+
+.device-status.status-ok {
+    color: var(--success);
+}
+
+.device-status.status-warn {
+    color: var(--warning);
+}
+
+.device-status.status-fail {
+    color: var(--danger);
+}
+
+/* ----- Service Health Status ----- */
+.status-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.status-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 14px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 8px;
+}
+
+.status-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    font-family: monospace;
+}
+
+.status-ok {
+    color: var(--success);
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.status-fail {
+    color: var(--danger);
+    font-size: 13px;
+    font-weight: 600;
+}
+
+/* ----- App Config Table ----- */
+.config-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0 16px;
+}
+
+.config-table th,
+.config-table td {
+    padding: 8px 12px;
+    font-size: 13px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    text-align: left;
+}
+
+.config-table th {
+    color: var(--text-muted);
+    font-weight: 600;
+    width: 45%;
+}
+
+.config-table td {
+    color: var(--text);
+    font-family: monospace;
+}
+
+.download-url {
+    font-size: 15px !important;
+    font-weight: 600;
+}
+
+.download-url a {
+    color: var(--accent);
+    word-break: break-all;
+}
+
+/* ----- Verification Checklist ----- */
+.checklist {
+    list-style: none;
+    padding-left: 0;
+    margin-bottom: 16px;
+}
+
+.checklist li {
+    color: var(--text-body);
+    font-size: 14px;
+    padding: 6px 0 6px 28px;
+    position: relative;
+}
+
+.checklist li::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 8px;
+    width: 16px;
+    height: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 3px;
+    background: rgba(255, 255, 255, 0.03);
+}
+
+/* ----- Code in info box ----- */
+.info-box code {
+    background: rgba(255, 255, 255, 0.08);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-family: monospace;
+    color: var(--text);
+}
+
+/* ----- Navigation ----- */
+.setup-nav {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 20px;
+    gap: 12px;
+}
+
+.setup-nav .btn {
+    padding: 10px 24px;
+    border-radius: 10px;
+    font-size: 14px;
+}
+
+.setup-nav .btn-primary {
+    margin-left: auto;
+}
+
+/* ----- Responsive ----- */
+@media (max-width: 500px) {
+    .setup-container {
+        max-width: 100%;
+    }
+
+    .setup-step {
+        padding: 24px 20px;
+    }
+
+    .form-row {
+        grid-template-columns: 1fr;
+    }
+
+    .progress-bar {
+        gap: 8px;
+    }
+
+    .progress-dot {
+        width: 8px;
+        height: 8px;
+    }
+}

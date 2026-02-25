@@ -1,0 +1,18 @@
+# Android build artifacts
+android-app/.gradle/
+android-app/.idea/
+android-app/app/build/
+android-app/build/
+android-app/local.properties
+
+# APK releases (track via GitHub releases)
+apk/
+
+# Test/burn-in logs
+*.log
+
+# Config (contains credentials on device)
+config/config.json
+
+# macOS
+.DS_Store

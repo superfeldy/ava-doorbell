@@ -1,0 +1,4 @@
+// AVA Doorbell v4.0 - Project-level build.gradle
+plugins {
+    id 'com.android.application' version '9.0.0' apply false
+}

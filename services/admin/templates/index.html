@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AVA Doorbell - Admin</title>
+    <link rel="stylesheet" href="/static/css/common.css">
+    <link rel="stylesheet" href="/static/css/admin.css">
+</head>
+<body class="admin-body">
+    <!-- Connection Banner -->
+    <div class="connection-banner" id="connectionBanner">
+        Server unreachable <span class="retry-countdown" id="retryCountdown"></span>
+    </div>
+
+    <!-- Header -->
+    <header class="header">
+        <div class="header-left">
+            <button class="hamburger-btn" id="hamburgerBtn">&#9776;</button>
+            <span class="header-title">AVA Doorbell</span>
+            <span class="version-badge">v4.0</span>
+        </div>
+        <div class="header-right">
+            <a href="/view" class="header-btn" target="_blank">Live View</a>
+            <a href="/logout" class="header-btn">Logout</a>
+        </div>
+    </header>
+
+    <div class="main-container">
+        <!-- Sidebar -->
+        <nav class="sidebar">
+            <a class="sidebar-link active" data-section="dashboard">
+                <span class="sidebar-icon">&#x1F4CA;</span> Dashboard
+            </a>
+            <a class="sidebar-link" data-section="cameras">
+                <span class="sidebar-icon">&#x1F4F7;</span> Cameras
+            </a>
+            <a class="sidebar-link" data-section="layouts">
+                <span class="sidebar-icon">&#x1F5BC;</span> Layouts
+            </a>
+            <a class="sidebar-link" data-section="settings">
+                <span class="sidebar-icon">&#x2699;</span> Settings
+            </a>
+            <a class="sidebar-link" data-section="discovery">
+                <span class="sidebar-icon">&#x1F50D;</span> Discovery
+            </a>
+            <a class="sidebar-link" data-section="logs">
+                <span class="sidebar-icon">&#x1F4DC;</span> Logs
+            </a>
+            <a class="sidebar-link" data-section="backup">
+                <span class="sidebar-icon">&#x1F4BE;</span> Backup
+            </a>
+        </nav>
+
+        <!-- Content -->
+        <main class="content">
+            <!-- Dashboard Section -->
+            <section id="section-dashboard" class="section active">
+                <h1 class="page-title">Dashboard</h1>
+                <div class="action-bar">
+                    <button class="btn btn-secondary" id="refreshStatusBtn">Refresh</button>
+                    <button class="btn btn-danger" id="restartAllBtn">Restart All Services</button>
+                </div>
+                <div class="status-grid" id="statusGrid"></div>
+                <div class="card">
+                    <div class="card-title">System Info</div>
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <div class="info-label">Pi IP Address</div>
+                            <div class="info-value" id="pi-ip">--</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Uptime</div>
+                            <div class="info-value" id="system-uptime">--</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Last Updated</div>
+                            <div class="info-value" id="last-updated">--</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Cameras Section -->
+            <section id="section-cameras" class="section">
+                <h1 class="page-title">Cameras</h1>
+                <div class="action-bar">
+                    <button class="btn btn-primary" id="addCameraBtn">Add Camera</button>
+                    <button class="btn btn-secondary" id="addFromNvrBtn">Add from NVR</button>
+                </div>
+                <div class="camera-grid" id="cameraGrid"></div>
+            </section>
+
+            <!-- Layouts Section -->
+            <section id="section-layouts" class="section">
+                <h1 class="page-title">Layouts</h1>
+                <div class="layout-container">
+                    <div class="layout-editor">
+                        <div class="layout-editor-header">
+                            <div class="layout-size-tabs">
+                                <button class="layout-size-tab" data-size="single">1</button>
+                                <button class="layout-size-tab" data-size="2up">2</button>
+                                <button class="layout-size-tab active" data-size="4up">4</button>
+                                <button class="layout-size-tab" data-size="6up">6</button>
+                                <button class="layout-size-tab" data-size="8up">8</button>
+                                <button class="layout-size-tab" data-size="9up">9</button>
+                            </div>
+                            <button class="btn btn-primary btn-sm" id="saveLayoutsBtn">Save</button>
+                        </div>
+                        <div class="layout-grid-preview layout-4up-grid" id="layoutGrid"></div>
+                        <p class="form-hint">Drag cameras from the sidebar into grid slots, or click a slot to assign.</p>
+                    </div>
+                    <div class="layout-sidebar">
+                        <div class="layout-sidebar-title">Cameras</div>
+                        <div id="cameraTiles"></div>
+                        <div class="preset-section">
+                            <div class="layout-sidebar-title">Presets</div>
+                            <div id="presetList"></div>
+                            <button class="btn btn-sm btn-secondary" id="savePresetBtn" style="margin-top:8px;">Save as Preset</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Settings Section -->
+            <section id="section-settings" class="section">
+                <h1 class="page-title">Settings</h1>
+
+                <div class="settings-group">
+                    <div class="settings-group-title">Doorbell</div>
+                    <div class="card">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="setting-doorbell-ip">IP Address</label>
+                                <input type="text" id="setting-doorbell-ip" placeholder="e.g. 10.10.10.187">
+                            </div>
+                            <div class="form-group">
+                                <label for="setting-doorbell-user">Username</label>
+                                <input type="text" id="setting-doorbell-user" placeholder="admin">
+                            </div>
+                            <div class="form-group">
+                                <label for="setting-doorbell-pass">Password</label>
+                                <input type="password" id="setting-doorbell-pass" placeholder="Password">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="settings-group">
+                    <div class="settings-group-title">NVR</div>
+                    <div class="card">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="setting-nvr-ip">IP Address</label>
+                                <input type="text" id="setting-nvr-ip" placeholder="e.g. 10.10.10.195">
+                            </div>
+                            <div class="form-group">
+                                <label for="setting-nvr-user">Username</label>
+                                <input type="text" id="setting-nvr-user" placeholder="admin">
+                            </div>
+                            <div class="form-group">
+                                <label for="setting-nvr-pass">Password</label>
+                                <input type="password" id="setting-nvr-pass" placeholder="Password">
+                            </div>
+                            <div class="form-group">
+                                <label for="setting-nvr-port">RTSP Port</label>
+                                <input type="number" id="setting-nvr-port" placeholder="554" value="554">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="settings-group">
+                    <div class="settings-group-title">Notifications</div>
+                    <div class="card">
+                        <div class="form-group">
+                            <label for="setting-mqtt-topic">MQTT Topic</label>
+                            <input type="text" id="setting-mqtt-topic" placeholder="doorbell/events">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="settings-group">
+                    <div class="settings-group-title">Auto-Cycle</div>
+                    <div class="card">
+                        <div class="form-checkbox">
+                            <input type="checkbox" id="setting-autocycle-enabled">
+                            <label for="setting-autocycle-enabled">Enable auto-cycle between layouts</label>
+                        </div>
+                        <div class="form-group">
+                            <label for="setting-autocycle-interval">Cycle Interval (seconds)</label>
+                            <input type="number" id="setting-autocycle-interval" value="30" min="5" max="300">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="settings-group">
+                    <div class="settings-group-title">Network Shares (SMB)</div>
+                    <div class="card">
+                        <div class="form-checkbox">
+                            <input type="checkbox" id="setting-smb-enabled">
+                            <label for="setting-smb-enabled">Enable Samba file sharing</label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="settings-group">
+                    <div class="settings-group-title">Change Password</div>
+                    <div class="card">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="setting-current-pass">Current Password</label>
+                                <input type="password" id="setting-current-pass">
+                            </div>
+                            <div class="form-group">
+                                <label for="setting-new-pass">New Password</label>
+                                <input type="password" id="setting-new-pass" placeholder="At least 6 characters">
+                            </div>
+                            <div class="form-group">
+                                <label for="setting-confirm-pass">Confirm Password</label>
+                                <input type="password" id="setting-confirm-pass">
+                            </div>
+                        </div>
+                        <button class="btn btn-primary" id="changePasswordBtn">Change Password</button>
+                    </div>
+                </div>
+
+                <div class="settings-group">
+                    <div class="settings-group-title">Setup Wizard</div>
+                    <div class="card">
+                        <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 12px;">
+                            Re-run the setup wizard to reconfigure cameras, network, or services.
+                            Requires your current password.
+                        </p>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="rerun-setup-pass">Current Password</label>
+                                <input type="password" id="rerun-setup-pass" placeholder="Confirm password">
+                            </div>
+                        </div>
+                        <button class="btn btn-secondary" id="rerunSetupBtn">Re-run Setup Wizard</button>
+                    </div>
+                </div>
+
+                <div class="action-bar">
+                    <button class="btn btn-primary" id="saveSettingsBtn">Save Settings</button>
+                </div>
+            </section>
+
+            <!-- Discovery Section -->
+            <section id="section-discovery" class="section">
+                <h1 class="page-title">Network Discovery</h1>
+                <div class="action-bar">
+                    <button class="btn btn-primary" id="scanNetworkBtn">Scan Network</button>
+                </div>
+                <div class="discovery-grid" id="discoveryResults">
+                    <p style="color:var(--text-muted);">Click "Scan Network" to discover cameras and devices on your local network.</p>
+                </div>
+            </section>
+
+            <!-- Logs Section -->
+            <section id="section-logs" class="section">
+                <h1 class="page-title">Service Logs</h1>
+                <div class="action-bar">
+                    <select id="logServiceFilter" class="form-select-sm">
+                        <option value="all">All Services</option>
+                        <option value="ava-admin">Admin</option>
+                        <option value="go2rtc">go2rtc</option>
+                        <option value="ava-talk">Talk Relay</option>
+                        <option value="alarm-scanner">Alarm Scanner</option>
+                        <option value="mosquitto">MQTT</option>
+                    </select>
+                    <select id="logLinesFilter" class="form-select-sm">
+                        <option value="50">50 lines</option>
+                        <option value="100" selected>100 lines</option>
+                        <option value="200">200 lines</option>
+                        <option value="500">500 lines</option>
+                    </select>
+                    <button class="btn btn-secondary" id="refreshLogsBtn">Refresh</button>
+                    <label class="form-checkbox-inline">
+                        <input type="checkbox" id="logAutoRefresh"> Auto-refresh
+                    </label>
+                </div>
+                <div class="log-viewer" id="logViewer">
+                    <pre class="log-output" id="logOutput">Click "Refresh" to load logs...</pre>
+                </div>
+            </section>
+
+            <!-- Backup Section -->
+            <section id="section-backup" class="section">
+                <h1 class="page-title">Backup & Restore</h1>
+                <div class="card">
+                    <div class="card-title">Configuration Backup</div>
+                    <p class="card-subtitle">Download or restore your system configuration.</p>
+                    <div class="backup-actions">
+                        <button class="btn btn-primary" id="downloadBackupBtn">Download Backup</button>
+                        <button class="btn btn-secondary" id="restoreBackupBtn">Restore from File</button>
+                        <input type="file" id="restoreFileInput" accept=".json" style="display:none">
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script type="module" src="/static/js/admin/main.js"></script>
+</body>
+</html>

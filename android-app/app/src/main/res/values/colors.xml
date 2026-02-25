@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="bg_deep">#0A0A1A</color>
+    <color name="bg_surface">#12122A</color>
+    <color name="card">#16213E</color>
+    <color name="primary">#0F3460</color>
+    <color name="accent">#E94560</color>
+    <color name="accent_glow">#4DE94560</color>
+    <color name="text_primary">#FFFFFF</color>
+    <color name="text_secondary">#AAAAAA</color>
+    <color name="text_muted">#666666</color>
+    <color name="glass_bg">#0AFFFFFF</color>
+    <color name="glass_border">#14FFFFFF</color>
+    <color name="status_green">#4ADE80</color>
+    <color name="status_orange">#FF9800</color>
+    <color name="status_red">#F44336</color>
+    <color name="black">#000000</color>
+    <color name="overlay_bg">#CC000000</color>
+    <color name="ic_launcher_background">#0A0A1A</color>
+</resources>

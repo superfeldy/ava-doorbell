@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">AVA Doorbell</string>
+    <string name="notification_channel_id">doorbell_alerts</string>
+    <string name="notification_channel_name">Doorbell Alerts</string>
+    <string name="notification_channel_desc">Notifications for doorbell ring events</string>
+    <string name="overlay_channel_id">doorbell_overlay</string>
+    <string name="overlay_channel_name">Doorbell Overlay</string>
+    <string name="overlay_channel_desc">Persistent notification for doorbell overlay service</string>
+    <string name="version_info_format">Version: %1$s\nv4.0 (Build %2$d)</string>
+    <string name="version_info_default">Version: v4.0</string>
+</resources>

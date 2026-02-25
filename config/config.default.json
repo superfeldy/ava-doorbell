@@ -1,0 +1,63 @@
+{
+  "admin": {
+    "setup_complete": false,
+    "password_hash": "",
+    "api_token_hash": "",
+    "session_secret": ""
+  },
+  "server": {
+    "admin_port": 5000,
+    "go2rtc_port": 1984,
+    "go2rtc_tls_port": 1985,
+    "talk_port": 5001,
+    "mqtt_broker": "localhost",
+    "mqtt_port": 1883
+  },
+  "doorbell": {
+    "ip": "",
+    "username": "admin",
+    "password": "",
+    "rtsp_port": 554,
+    "sdk_port": 37777,
+    "events": ["DoorBell", "AlarmLocal", "VideoMotion", "CallNoAnswered"]
+  },
+  "nvr": {
+    "ip": "",
+    "username": "admin",
+    "password": "",
+    "rtsp_port": 554,
+    "max_channels": 16,
+    "doorbell_channel": null
+  },
+  "cameras": [],
+  "layouts": {
+    "single": [],
+    "2up": [],
+    "4up": [],
+    "6up": [],
+    "8up": [],
+    "9up": []
+  },
+  "preset_layouts": [],
+  "auto_cycle": {
+    "enabled": false,
+    "interval_seconds": 30,
+    "presets": []
+  },
+  "notifications": {
+    "mqtt_topic_ring": "doorbell/ring",
+    "mqtt_topic_event": "doorbell/event",
+    "mqtt_topic_status": "doorbell/status",
+    "ring_cooldown_seconds": 10
+  },
+  "smb": {
+    "enabled": false,
+    "workgroup": "WORKGROUP",
+    "shares": {
+      "config": true,
+      "services": true,
+      "recordings": true
+    }
+  },
+  "version": "4.0"
+}

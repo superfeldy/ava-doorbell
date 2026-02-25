@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AVA Doorbell - Setup</title>
+    <link rel="stylesheet" href="/static/css/common.css">
+    <link rel="stylesheet" href="/static/css/setup.css">
+</head>
+<body class="setup-body">
+    <div class="setup-container">
+        <div class="setup-header">
+            <h1>AVA Doorbell Setup</h1>
+            <div class="progress-bar">
+                <span class="progress-dot active" title="Welcome"></span>
+                <span class="progress-dot" title="Password"></span>
+                <span class="progress-dot" title="Network"></span>
+                <span class="progress-dot" title="Cameras"></span>
+                <span class="progress-dot" title="Verify"></span>
+                <span class="progress-dot" title="Services"></span>
+                <span class="progress-dot" title="App"></span>
+                <span class="progress-dot" title="Complete"></span>
+            </div>
+        </div>
+
+        <div id="setup-error" class="error-message" style="display:none"></div>
+        <div id="setup-loading" class="loading-overlay" style="display:none">
+            <div class="spinner"></div>
+            <span class="loading-text">Loading...</span>
+        </div>
+
+        <!-- Step 1: Welcome -->
+        <div id="step-welcome" class="setup-step active">
+            <h2>Welcome to AVA Doorbell</h2>
+            <p>This wizard will walk you through the full system setup.</p>
+            <p>Here's what we'll do:</p>
+            <ul>
+                <li>Set an admin password</li>
+                <li>Detect your network and generate SSL</li>
+                <li>Connect your doorbell and NVR cameras</li>
+                <li>Verify camera feeds</li>
+                <li>Check that all services are running</li>
+                <li>Install the Android app on the tablet</li>
+            </ul>
+            <p class="hint">Takes about 5 minutes. You can go back to any step if needed.</p>
+        </div>
+
+        <!-- Step 2: Password -->
+        <div id="step-password" class="setup-step">
+            <h2>Set Admin Password</h2>
+            <p>Choose a strong password for the admin dashboard.</p>
+            <div class="form-group">
+                <label for="setup-password">Password</label>
+                <input type="password" id="setup-password" placeholder="At least 6 characters" autocomplete="new-password">
+            </div>
+            <div class="form-group">
+                <label for="setup-password-confirm">Confirm Password</label>
+                <input type="password" id="setup-password-confirm" placeholder="Repeat password" autocomplete="new-password">
+            </div>
+        </div>
+
+        <!-- Step 3: Network -->
+        <div id="step-network" class="setup-step">
+            <h2>Network Configuration</h2>
+            <p>Your Pi's network will be detected automatically and an SSL certificate generated.</p>
+            <div id="network-info" class="info-box">
+                <p>Click "Next" to detect network and generate SSL certificate.</p>
+            </div>
+        </div>
+
+        <!-- Step 4: Cameras -->
+        <div id="step-cameras" class="setup-step">
+            <h2>Camera Setup</h2>
+            <p>Enter your device credentials. Use "Test" to verify connectivity before scanning.</p>
+
+            <div class="form-section">
+                <h3>Doorbell</h3>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="setup-doorbell-ip">IP Address</label>
+                        <input type="text" id="setup-doorbell-ip" placeholder="e.g. 10.10.10.187">
+                    </div>
+                    <div class="form-group">
+                        <label for="setup-doorbell-user">Username</label>
+                        <input type="text" id="setup-doorbell-user" placeholder="admin" value="admin">
+                    </div>
+                    <div class="form-group">
+                        <label for="setup-doorbell-pass">Password</label>
+                        <input type="password" id="setup-doorbell-pass" placeholder="Password">
+                    </div>
+                </div>
+                <div class="test-row">
+                    <button type="button" class="btn btn-secondary btn-test" id="test-doorbell">Test Connection</button>
+                    <span class="device-status" id="doorbell-status"></span>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <h3>NVR (Optional)</h3>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="setup-nvr-ip">IP Address</label>
+                        <input type="text" id="setup-nvr-ip" placeholder="e.g. 10.10.10.195">
+                    </div>
+                    <div class="form-group">
+                        <label for="setup-nvr-user">Username</label>
+                        <input type="text" id="setup-nvr-user" placeholder="admin" value="admin">
+                    </div>
+                    <div class="form-group">
+                        <label for="setup-nvr-pass">Password</label>
+                        <input type="password" id="setup-nvr-pass" placeholder="Password">
+                    </div>
+                </div>
+                <div class="test-row">
+                    <button type="button" class="btn btn-secondary btn-test" id="test-nvr">Test Connection</button>
+                    <span class="device-status" id="nvr-status"></span>
+                </div>
+            </div>
+
+            <div id="camera-results" class="results-grid"></div>
+            <button id="skip-cameras" class="btn btn-secondary">Skip Camera Setup</button>
+        </div>
+
+        <!-- Step 5: Verify -->
+        <div id="step-verify" class="setup-step">
+            <h2>Verify Cameras</h2>
+            <p>Pi IP: <strong id="verify-ip">detecting...</strong></p>
+            <div id="verify-previews" class="preview-grid"></div>
+            <p class="hint">Click "Next" to save configuration and finalize setup.</p>
+        </div>
+
+        <!-- Step 6: Services -->
+        <div id="step-services" class="setup-step">
+            <h2>Service Health</h2>
+            <p>Checking that all system services are running.</p>
+            <div id="service-list" class="status-list"></div>
+            <div id="services-actions" style="display:none; margin-top: 16px;">
+                <button id="retry-services" class="btn btn-secondary">Retry Check</button>
+            </div>
+            <p class="hint" id="services-hint" style="display:none">Services can also be checked later from the admin dashboard.</p>
+        </div>
+
+        <!-- Step 7: App -->
+        <div id="step-app" class="setup-step">
+            <h2>Install the App</h2>
+            <p>Get the AVA Doorbell app on the Android tablet.</p>
+
+            <div class="info-box download-box">
+                <p>On the tablet's browser, go to:</p>
+                <p class="download-url"><a id="apk-link" href="/app/download">loading...</a></p>
+                <p class="hint">Tap the downloaded file to install. You may need to enable "Install from unknown sources" in Android Settings.</p>
+            </div>
+
+            <div class="form-section">
+                <h3>App Settings</h3>
+                <p>Long-press (3 sec) anywhere on screen to open Settings, then enter:</p>
+                <table class="config-table" id="app-config-table">
+                    <tbody>
+                        <tr><th>Server IP</th><td id="app-server-ip">—</td></tr>
+                        <tr><th>Admin Port</th><td>5000</td></tr>
+                        <tr><th>MQTT Port</th><td>1883</td></tr>
+                        <tr><th>Talk Port</th><td>5001</td></tr>
+                        <tr><th>Default Camera</th><td>doorbell_direct</td></tr>
+                        <tr><th>Default Layout</th><td>single</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="info-box">
+                <p><strong>API Token:</strong> Log in to the dashboard → Settings → API Token → Generate, then paste into the app.</p>
+            </div>
+        </div>
+
+        <!-- Step 8: Complete -->
+        <div id="step-complete" class="setup-step">
+            <h2>Setup Complete!</h2>
+            <div id="complete-info" class="info-box">
+                <p>Your AVA Doorbell system is ready.</p>
+            </div>
+
+            <div class="form-section">
+                <h3>Verification Checklist</h3>
+                <ul class="checklist">
+                    <li>Dashboard loads and login works</li>
+                    <li>Cameras section shows discovered cameras</li>
+                    <li>Live View shows video feeds</li>
+                    <li>Android app connects and shows video</li>
+                    <li>Press doorbell → notification appears on tablet</li>
+                    <li>Mic button (bottom-right) → two-way audio works</li>
+                </ul>
+            </div>
+
+            <div class="form-section">
+                <h3>Quick Troubleshooting</h3>
+                <div class="info-box">
+                    <p><strong>Service logs:</strong> <code>sudo journalctl -u ava-admin -f</code></p>
+                    <p><strong>All services:</strong> <code>systemctl status ava-*</code></p>
+                    <p><strong>Streams:</strong> <code>curl http://localhost:1984/api/streams</code></p>
+                    <p><strong>MQTT test:</strong> <code>mosquitto_sub -t "doorbell/#" -v</code></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Navigation -->
+        <div class="setup-nav">
+            <button id="prev-btn" class="btn btn-secondary" style="display:none">Back</button>
+            <button id="next-btn" class="btn btn-primary">Next</button>
+        </div>
+    </div>
+
+    <script src="/static/js/setup/wizard.js"></script>
+</body>
+</html>

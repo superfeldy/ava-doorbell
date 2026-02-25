@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- Trust self-signed certs for local AVA admin server (HTTPS for getUserMedia) -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">10.10.10.167</domain>
+        <domain includeSubdomains="true">10.10.10.187</domain>
+        <domain includeSubdomains="true">10.10.10.195</domain>
+        <domain includeSubdomains="true">10.10.10.0</domain>
+        <trust-anchors>
+            <certificates src="system" />
+            <certificates src="user" />
+        </trust-anchors>
+    </domain-config>
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

@@ -1,0 +1,604 @@
+/* ============================================================
+   AVA Doorbell v4.0 — Multiview (Live View) Styles
+   Grid layouts (1–9up), camera cells, controls bar,
+   overlays, talk button, fullscreen.
+   Requires: common.css
+   ============================================================ */
+
+/* ----- Viewport ----- */
+html.multiview, html.multiview body {
+    overflow: hidden;
+    background: #000;
+}
+
+#viewport {
+    width: 100%;
+    height: 100%;
+    display: grid;
+    grid-auto-flow: dense;
+    gap: 2px;
+    padding: 2px;
+    background: #000;
+}
+
+/* ----- Grid Layouts ----- */
+.layout-single { grid-template-columns: 1fr; grid-template-rows: 1fr; }
+.layout-2up    { grid-template-columns: 1fr; grid-template-rows: 1fr 1fr; }
+.layout-4up    { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; }
+.layout-6up    { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr 1fr; }
+.layout-8up    { grid-template-columns: 1fr 1fr 1fr 1fr; grid-template-rows: 1fr 1fr; }
+.layout-9up    { grid-template-columns: 1fr 1fr 1fr; grid-template-rows: 1fr 1fr 1fr; }
+
+/* ----- Camera Cell ----- */
+.camera-cell {
+    position: relative;
+    background: #0a0a0a;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    overflow: hidden;
+    cursor: pointer;
+    transition: border-color var(--transition-fast, 0.15s ease);
+    will-change: transform;
+    transform: translate3d(0, 0, 0);
+}
+
+.camera-cell:hover {
+    border-color: rgba(255, 255, 255, 0.15);
+}
+
+.camera-cell.empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #444;
+    font-size: 13px;
+    cursor: default;
+}
+
+.camera-cell.empty:hover {
+    border-color: rgba(255, 255, 255, 0.06);
+}
+
+/* ----- MJPEG Preview Image ----- */
+/* Hide the broken-image icon / alt text before the first frame arrives.
+   The <img> starts with no src, so browsers show a placeholder.
+   background: #000 fills the cell, color: transparent hides alt text,
+   and we suppress the broken-image icon with object-fit. */
+.mjpeg-preview {
+    background: #000;
+    color: transparent;
+}
+.mjpeg-preview:not([src]),
+.mjpeg-preview[src=""] {
+    visibility: hidden;
+}
+
+/* ----- Video Element ----- */
+.camera-cell video {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    background: #000;
+    display: block;
+}
+
+/* Hide until data flows (JS removes this on first frame) */
+.camera-cell video.waiting {
+    visibility: hidden;
+}
+
+.camera-cell video::-webkit-media-controls,
+.camera-cell video::-webkit-media-controls-enclosure,
+.camera-cell video::-webkit-media-controls-panel,
+.camera-cell video::-webkit-media-controls-start-playback-button {
+    display: none !important;
+    -webkit-appearance: none;
+}
+
+/* ----- Camera Rotation ----- */
+/* Rotate video/mjpeg within the cell. For 90/270, swap the element dimensions
+   so the rotated content fills the cell without overflow. */
+.camera-cell.rotate-90 video,
+.camera-cell.rotate-90 .mjpeg-preview,
+.camera-cell.rotate-90 .frozen-frame {
+    transform: rotate(90deg);
+    transform-origin: center center;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.camera-cell.rotate-180 video,
+.camera-cell.rotate-180 .mjpeg-preview,
+.camera-cell.rotate-180 .frozen-frame {
+    transform: rotate(180deg);
+}
+
+.camera-cell.rotate-270 video,
+.camera-cell.rotate-270 .mjpeg-preview,
+.camera-cell.rotate-270 .frozen-frame {
+    transform: rotate(270deg);
+    transform-origin: center center;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+/* ----- Camera Label ----- */
+.camera-label {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    background: rgba(0, 0, 0, 0.55);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    color: #fff;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    pointer-events: none;
+    z-index: 10;
+    max-width: 90%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* ----- Status Dot ----- */
+.camera-status {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    z-index: 10;
+    pointer-events: none;
+}
+
+.camera-status.connecting {
+    background: var(--warning, #ffc107);
+    animation: pulse 1s ease infinite;
+}
+
+.camera-status.live {
+    background: var(--success, #4ade80);
+}
+
+.camera-status.error {
+    background: var(--danger, #f44336);
+}
+
+/* ----- Frozen Frame Overlay ----- */
+.frozen-frame {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    z-index: 1;
+    pointer-events: none;
+}
+
+/* ----- Loading Overlay ----- */
+.loading-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    z-index: 5;
+    gap: 8px;
+}
+
+.loading-overlay .spinner-lg {
+    width: 28px;
+    height: 28px;
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    border-top-color: var(--accent, #e94560);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+.loading-overlay span {
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 11px;
+}
+
+/* ----- Reconnect Overlay ----- */
+.reconnect-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    z-index: 6;
+    gap: 12px;
+    cursor: pointer;
+}
+
+.reconnect-overlay .reconnect-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 18px;
+    transition: all var(--transition-fast, 0.15s ease);
+}
+
+.reconnect-overlay:hover .reconnect-icon {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.3);
+    transform: scale(1.1);
+}
+
+.reconnect-overlay .reconnect-text {
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 12px;
+}
+
+/* ----- Fullscreen ----- */
+.camera-cell.fullscreen {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    z-index: var(--z-fullscreen, 1000);
+    border: none;
+    border-radius: 0;
+}
+
+/* ----- Controls Bar ----- */
+#controls {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 64px;
+    background: rgba(0, 0, 0, 0.65);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    z-index: var(--z-controls, 100);
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    padding: 0 16px;
+}
+
+#controls.hidden {
+    opacity: 0;
+    transform: translateY(80px);
+    pointer-events: none;
+}
+
+/* ----- Control Buttons ----- */
+.control-btn {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: #fff;
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+    font-size: 18px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s ease;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: manipulation;
+}
+
+.control-btn svg {
+    width: 22px;
+    height: 22px;
+}
+
+.control-btn:hover {
+    background: rgba(255, 255, 255, 0.15);
+    border-color: rgba(255, 255, 255, 0.25);
+}
+
+.control-btn:active {
+    transform: scale(0.93);
+}
+
+.control-btn.active {
+    background: rgba(74, 222, 128, 0.2);
+    border-color: rgba(74, 222, 128, 0.4);
+    color: #4ade80;
+}
+
+/* ----- Talk Button ----- */
+#btn-talk {
+    display: none;
+}
+
+#btn-talk.visible {
+    display: flex;
+}
+
+#btn-talk.connecting {
+    background: rgba(255, 193, 7, 0.2);
+    border-color: rgba(255, 193, 7, 0.4);
+    color: #ffc107;
+    animation: pulse 1s ease infinite;
+}
+
+#btn-talk.recording {
+    background: rgba(239, 68, 68, 0.3);
+    border-color: rgba(239, 68, 68, 0.5);
+    color: #ef4444;
+    animation: pulseTalk 1s ease-in-out infinite;
+}
+
+@keyframes pulseTalk {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.5); }
+    50%      { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+}
+
+#btn-talk.ring-attention {
+    animation: pulseRing 0.8s ease-in-out infinite;
+    border-color: rgba(74, 222, 128, 0.5);
+    background: rgba(74, 222, 128, 0.25);
+    color: #4ade80;
+}
+
+@keyframes pulseRing {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.5); }
+    50%      { box-shadow: 0 0 0 12px rgba(74, 222, 128, 0); }
+}
+
+/* ----- Mute Indicator ----- */
+.control-btn.muted {
+    color: var(--text-dimmed, #707080);
+}
+
+.control-btn.muted svg {
+    opacity: 0.5;
+}
+
+/* ----- Preset Dropdown ----- */
+.preset-dropdown {
+    position: relative;
+}
+
+.preset-dropdown-btn {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: #fff;
+    height: 44px;
+    padding: 0 14px;
+    border-radius: 10px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+}
+
+.preset-dropdown-btn:hover {
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.preset-menu {
+    display: none;
+    position: absolute;
+    bottom: 52px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(20, 20, 40, 0.95);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    padding: 6px;
+    min-width: 160px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+}
+
+.preset-menu.show {
+    display: block;
+    animation: slideUp 0.15s ease;
+}
+
+.preset-menu-item {
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 13px;
+    color: var(--text-body, #e0e0e0);
+    cursor: pointer;
+    transition: background 0.1s ease;
+    white-space: nowrap;
+}
+
+.preset-menu-item:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.preset-menu-item.active {
+    color: var(--accent, #e94560);
+    background: rgba(233, 69, 96, 0.1);
+}
+
+/* ----- Auto-Cycle Indicator ----- */
+.cycle-indicator {
+    position: fixed;
+    top: 8px;
+    right: 8px;
+    background: rgba(0, 0, 0, 0.55);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: rgba(255, 255, 255, 0.7);
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 11px;
+    z-index: 50;
+    display: none;
+}
+
+.cycle-indicator.active {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.cycle-indicator .cycle-progress {
+    width: 40px;
+    height: 3px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.cycle-indicator .cycle-progress-bar {
+    height: 100%;
+    background: var(--accent, #e94560);
+    border-radius: 2px;
+    transition: width 1s linear;
+}
+
+/* ----- Multiview Toast (centered bottom) ----- */
+.multiview-toast {
+    position: fixed;
+    bottom: 80px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    color: #fff;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: 13px;
+    z-index: var(--z-toast, 200);
+    pointer-events: none;
+    animation: toastSlide 0.3s ease;
+    text-align: center;
+    max-width: 90%;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.multiview-toast.error {
+    border-left: 3px solid var(--danger, #f44336);
+}
+
+.multiview-toast.success {
+    border-left: 3px solid var(--success, #4ade80);
+}
+
+@keyframes toastSlide {
+    from { opacity: 0; transform: translateX(-50%) translateY(12px); }
+    to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+/* ----- Responsive ----- */
+@media (max-width: 768px) {
+    .camera-label {
+        font-size: 10px;
+        padding: 3px 6px;
+    }
+
+    .control-btn {
+        width: 40px;
+        height: 40px;
+    }
+
+    .control-btn svg {
+        width: 20px;
+        height: 20px;
+    }
+
+    #controls {
+        height: 56px;
+        gap: 8px;
+    }
+
+    .preset-dropdown-btn {
+        height: 40px;
+        padding: 0 10px;
+        font-size: 11px;
+    }
+}
+
+/* ----- Portrait displays (tablet wall-mount, phone) ----- */
+/* Flip rows/columns so more rows than columns fills tall screens better */
+@media (orientation: portrait) {
+    .layout-2up {
+        grid-template-columns: 1fr;
+        grid-template-rows: 1fr 1fr;
+    }
+
+    .layout-4up {
+        grid-template-columns: 1fr;
+        grid-template-rows: 1fr 1fr 1fr 1fr;
+    }
+
+    .layout-6up {
+        grid-template-columns: 1fr 1fr;
+        grid-template-rows: 1fr 1fr 1fr;
+    }
+
+    .layout-8up {
+        grid-template-columns: 1fr 1fr;
+        grid-template-rows: 1fr 1fr 1fr 1fr;
+    }
+
+    .layout-9up {
+        grid-template-columns: 1fr 1fr 1fr;
+        grid-template-rows: 1fr 1fr 1fr;
+    }
+}
+
+/* Smaller portrait screens (phones) */
+@media (orientation: portrait) and (max-width: 600px) {
+    .layout-4up {
+        grid-template-columns: 1fr;
+        grid-template-rows: 1fr 1fr 1fr 1fr;
+    }
+
+    .layout-6up {
+        grid-template-columns: 1fr;
+        grid-template-rows: repeat(6, 1fr);
+    }
+
+    .layout-8up {
+        grid-template-columns: 1fr 1fr;
+        grid-template-rows: 1fr 1fr 1fr 1fr;
+    }
+
+    .layout-9up {
+        grid-template-columns: 1fr 1fr;
+        grid-template-rows: repeat(5, 1fr);
+    }
+}
+
+/* Landscape small screens */
+@media (orientation: landscape) and (max-width: 800px) {
+    .layout-8up {
+        grid-template-columns: 1fr 1fr 1fr 1fr;
+        grid-template-rows: 1fr 1fr;
+    }
+}
