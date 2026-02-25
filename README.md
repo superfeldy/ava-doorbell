@@ -19,16 +19,16 @@ graph TD
     end
 
     subgraph Pi["Raspberry Pi"]
-        Admin["ava-admin :5000/:5443"]
-        Talk["ava-talk :5001"]
-        Go2rtc["go2rtc :1984/:1985"]
         Alarm["alarm-scanner"]
+        Talk["ava-talk :5001"]
+        Admin["ava-admin :5000/:5443"]
+        Go2rtc["go2rtc :1984/:1985"]
         MQTT["mosquitto :1883"]
     end
 
     subgraph Doorbell["Dahua VTO Doorbell"]
-        RTSP["RTSP :554"]
         SDK["SDK :37777"]
+        RTSP["RTSP :554"]
     end
 
     WV -- "HTTP/WS" --> Admin
