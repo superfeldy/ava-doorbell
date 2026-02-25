@@ -1,5 +1,10 @@
 # AVA Doorbell v4
 
+[![Release](https://img.shields.io/github/v/release/superfeldy/ava-doorbell?style=flat-square)](https://github.com/superfeldy/ava-doorbell/releases)
+[![License](https://img.shields.io/github/license/superfeldy/ava-doorbell?style=flat-square)](LICENSE)
+[![Platform](https://img.shields.io/badge/platform-Raspberry%20Pi-c51a4a?style=flat-square)](https://www.raspberrypi.com/)
+[![Android](https://img.shields.io/badge/android-7.0%2B-3ddc84?style=flat-square)](android-app/)
+
 A full-stack doorbell and camera monitoring system for Raspberry Pi. Streams Dahua VTO doorbell and IP camera feeds to an Android kiosk app via WebRTC/MSE/MJPEG, with two-way audio, ring notifications, and a web-based admin dashboard.
 
 ## Architecture
@@ -61,11 +66,13 @@ graph LR
 
 ```mermaid
 graph LR
-    A["Android Mic 8kHz PCM16"] --> B["NativeTalkManager"]
-    B -- "WS binary 0x01+PCM" --> C["ava-talk"]
-    C -- "smooth → gate → AGC → limit → G.711A" --> D["RTSP backchannel"]
+    A["Android Mic"] -- "PCM16 8kHz" --> B["NativeTalkManager"]
+    B -- "WebSocket" --> C["ava-talk"]
+    C -- "DSP + G.711A" --> D["RTSP backchannel"]
     D --> E["Doorbell speaker"]
 ```
+
+> ava-talk DSP chain: smoothing → noise gate → AGC → soft limiter → G.711A encode
 
 ### Event Pipeline
 
