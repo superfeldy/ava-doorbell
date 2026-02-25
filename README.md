@@ -7,6 +7,19 @@
 
 A full-stack doorbell and camera monitoring system for Raspberry Pi. Streams Dahua VTO doorbell and IP camera feeds to an Android kiosk app via WebRTC/MSE/MJPEG, with two-way audio, ring notifications, and a web-based admin dashboard.
 
+## Table of Contents
+
+- [Architecture](#architecture)
+- [Project Structure](#project-structure)
+- [Requirements](#requirements)
+- [Installation](#installation)
+- [Configuration](#configuration)
+- [MQTT Topics](#mqtt-topics)
+- [Talk Relay Wire Format](#talk-relay-wire-format)
+- [MediaTek Compatibility](#mediatek-compatibility)
+- [Development](#development)
+- [Tech Stack](#tech-stack)
+
 ## Architecture
 
 ```mermaid
