@@ -10,9 +10,8 @@ A full-stack doorbell and camera monitoring system for Raspberry Pi. Streams Dah
 ## Architecture
 
 ```mermaid
-graph LR
+graph TD
     subgraph Android["Android Kiosk App"]
-        CA[CinemaActivity]
         WV[WebView]
         NTM[NativeTalkManager]
         DO[DoorbellOverlay]
@@ -36,8 +35,8 @@ graph LR
     NTM -- "WebSocket" --> Talk
     MM -- "MQTT" --> MQTT
     Admin -- "WS proxy" --> Go2rtc
-    Talk -- "RTSP backchannel" --> RTSP
-    Alarm -- "HTTP long-poll" --> SDK
+    Talk -- "backchannel" --> RTSP
+    Alarm -- "long-poll" --> SDK
     Alarm -- "publish" --> MQTT
     Go2rtc -- "RTSP" --> RTSP
 ```
@@ -55,7 +54,7 @@ graph LR
 ### Video Pipeline
 
 ```mermaid
-graph LR
+graph TD
     A["Dahua RTSP :554"] --> B["go2rtc"]
     B --> C["ava-admin /api/ws-proxy"]
     C --> D["Android WebView"]
@@ -65,7 +64,7 @@ graph LR
 ### Audio Pipeline (Two-Way Talk)
 
 ```mermaid
-graph LR
+graph TD
     A["Android Mic"] -- "PCM16 8kHz" --> B["NativeTalkManager"]
     B -- "WebSocket" --> C["ava-talk"]
     C -- "DSP + G.711A" --> D["RTSP backchannel"]
@@ -77,7 +76,7 @@ graph LR
 ### Event Pipeline
 
 ```mermaid
-graph LR
+graph TD
     A["Dahua HTTP Event API"] --> B["alarm-scanner"]
     B -- "MQTT QoS 1" --> C["mosquitto"]
     C --> D["MqttManager"]
