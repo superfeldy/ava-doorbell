@@ -155,3 +155,40 @@ async def api_logs(
     except Exception as e:
         logger.error(f"Log fetch failed: {e}")
         return {"error": str(e)}
+
+
+@router.get("/logs/download")
+async def download_logs(
+    service: str = Query("all"),
+    since: str = Query("1 hour ago"),
+    user: str = Depends(require_auth),
+):
+    """Download service logs as a text file."""
+    from fastapi.responses import PlainTextResponse
+
+    if service != "all" and service not in ALL_SERVICES:
+        raise HTTPException(status_code=400, detail=f"Unknown service: {service}")
+
+    if since and not re.match(r"^[\w\-\s:]+$", since):
+        raise HTTPException(status_code=400, detail="Invalid 'since' format")
+
+    cmd = ["journalctl", "--no-pager", "-n", "5000", "--output=short-iso"]
+    if service == "all":
+        for svc in ALL_SERVICES:
+            cmd += ["-u", svc]
+    else:
+        cmd += ["-u", service]
+    if since:
+        cmd += ["--since", since]
+
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+        ts = datetime.now().strftime("%Y%m%d-%H%M%S")
+        filename = f"ava-logs-{service}-{ts}.txt"
+        return PlainTextResponse(
+            content=result.stdout,
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        )
+    except Exception as e:
+        logger.error(f"Log download failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))

@@ -173,6 +173,98 @@ mosquitto_pub -t "doorbell/ring" -m test   # terminal 2: trigger
 
 ---
 
+## Remote Access (Tailscale)
+
+Access the Pi from anywhere — not just the local LAN.
+
+### Install Tailscale
+
+On the Pi:
+```bash
+curl -fsSL https://tailscale.com/install.sh | sh
+sudo tailscale up
+```
+
+Follow the printed URL to authenticate. The Pi gets a stable Tailscale IP (100.x.y.z).
+
+On your Mac/phone: install Tailscale from https://tailscale.com/download and join the same tailnet.
+
+### Access via Tailscale
+
+| What | Command |
+|------|---------|
+| Dashboard | `http://<tailscale-ip>:5000` |
+| SSH | `ssh pi@<tailscale-ip>` |
+| Deploy | `PI_HOST=<tailscale-ip> bash deploy.sh` |
+| Tests | `PI_HOST=<tailscale-ip> AVA_PASSWORD=<pass> bash integration_test.sh` |
+| Log tail | `PI_HOST=<tailscale-ip> bash log_tail.sh` |
+
+### Magic DNS (optional)
+
+Enable Magic DNS in the [Tailscale admin console](https://login.tailscale.com/admin/dns). Then use the Pi's hostname instead of IP:
+```
+http://ava-doorbell:5000
+ssh pi@ava-doorbell
+```
+
+### Tailscale SSH (optional)
+
+Eliminates the need for SSH keys/passwords:
+```bash
+sudo tailscale up --ssh
+```
+
+---
+
+## Deployment Scripts
+
+### deploy.sh — Push from Mac
+
+Push local changes to the Pi:
+```bash
+bash deploy.sh                     # sync services + restart
+bash deploy.sh --build-apk         # also build and deploy APK
+bash deploy.sh --dry-run           # show what would change
+bash deploy.sh --skip-restart      # sync only
+PI_HOST=100.x.y.z bash deploy.sh   # via Tailscale
+```
+
+### update.sh — Pull from GitHub on Pi
+
+One-time setup (deploy key):
+```bash
+# On the Pi:
+ssh-keygen -t ed25519 -C "ava-pi-deploy" -f ~/.ssh/ava_deploy -N ""
+cat ~/.ssh/ava_deploy.pub
+# Add this key to GitHub: repo Settings → Deploy keys → Add (read-only)
+
+GIT_SSH_COMMAND="ssh -i ~/.ssh/ava_deploy" \
+  git clone git@github.com:superfeldy/ava-doorbell.git ~/ava-doorbell-repo
+git -C ~/ava-doorbell-repo config core.sshCommand "ssh -i ~/.ssh/ava_deploy"
+```
+
+Then to update:
+```bash
+bash ~/ava-doorbell-repo/update.sh
+```
+
+### log_tail.sh — Stream logs remotely
+
+```bash
+bash log_tail.sh                   # all services
+bash log_tail.sh ava-admin         # single service
+PI_HOST=100.x.y.z bash log_tail.sh # via Tailscale
+```
+
+### Log download via dashboard
+
+Download logs as a file from the admin API:
+```
+http://<PI_IP>:5000/api/logs/download?service=ava-admin&since=1%20hour%20ago
+```
+
+---
+
 ## Upgrading from v3
 
 1. Stop v3 services: `sudo systemctl stop ava-admin alarm-scanner ava-talk`
