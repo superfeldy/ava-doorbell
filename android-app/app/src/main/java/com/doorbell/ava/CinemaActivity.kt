@@ -709,7 +709,7 @@ class CinemaActivity : AppCompatActivity() {
         // server-configured camera assignments. Passing camera= would override
         // the layout and force a single-camera grid.
         val base = "http://$serverIp:$adminPort/view?layout=$defaultLayout&mode=mjpeg"
-        return if (defaultLayout == "single") "$base&camera=$defaultCamera" else base
+        return if (defaultLayout == "single") "$base&camera=${Uri.encode(defaultCamera)}" else base
     }
 
     private var lastLoadedUrl: String? = null
@@ -1073,14 +1073,14 @@ class CinemaActivity : AppCompatActivity() {
         val serverIp = settingsManager.getServerIp()
         val defaultCamera = settingsManager.getDefaultCamera()
         // go2rtc RTSP re-stream — single hardware decoder, true video
-        return "rtsp://$serverIp:$GO2RTC_RTSP_PORT/$defaultCamera"
+        return "rtsp://$serverIp:$GO2RTC_RTSP_PORT/${Uri.encode(defaultCamera)}"
     }
 
     private fun buildFrameUrl(): String {
         val serverIp = settingsManager.getServerIp()
         val defaultCamera = settingsManager.getDefaultCamera()
         // go2rtc snapshot endpoint — slow (decodes on demand), used as MJPEG fallback
-        return "http://$serverIp:$GO2RTC_PORT/api/frame.jpeg?src=$defaultCamera"
+        return "http://$serverIp:$GO2RTC_PORT/api/frame.jpeg?src=${Uri.encode(defaultCamera)}"
     }
 
     private fun showLoadingOverlay() {

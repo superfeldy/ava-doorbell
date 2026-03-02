@@ -98,6 +98,11 @@ def record_failed_attempt(ip: str) -> None:
     _login_attempts[ip].append(now)
 
 
+def clear_rate_limit(ip: str) -> None:
+    """Clear rate limit for an IP (e.g., after successful login)."""
+    _login_attempts.pop(ip, None)
+
+
 # ============================================================================
 # Session Helpers
 # ============================================================================

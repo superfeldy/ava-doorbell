@@ -254,7 +254,12 @@ class ConfigActivity : AppCompatActivity() {
         settingsManager.setMqttPort(mqttPort)
         settingsManager.setTalkPort(talkPort)
 
-        settingsManager.setDefaultCamera(inputDefaultCamera.text.toString())
+        val defaultCamera = inputDefaultCamera.text.toString().trim()
+        if (defaultCamera.isNotEmpty() && !defaultCamera.matches(Regex("^[a-zA-Z0-9_\\-]+$"))) {
+            showValidationError("Camera name can only contain letters, numbers, hyphens, and underscores")
+            return
+        }
+        settingsManager.setDefaultCamera(defaultCamera)
         settingsManager.setDefaultLayout(spinnerDefaultLayout.selectedItem.toString())
         settingsManager.setScreenBrightness(seekBarBrightness.progress)
 

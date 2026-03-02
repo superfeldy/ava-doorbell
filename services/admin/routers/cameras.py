@@ -5,6 +5,7 @@ CRUD operations for camera configurations and stream testing.
 """
 
 import logging
+import re
 import subprocess
 from typing import Any, Dict, Tuple
 
@@ -13,6 +14,14 @@ from fastapi import APIRouter, Depends, HTTPException
 from .. import config as config_module
 from ..dependencies import require_auth
 from ..models import CameraCreate, CameraUpdate
+
+
+def _sanitize_name(name: str) -> str:
+    """Strip HTML tags and limit to safe characters."""
+    clean = re.sub(r"<[^>]*>", "", name).strip()
+    if not clean:
+        raise HTTPException(status_code=400, detail="Camera name cannot be empty or HTML-only")
+    return clean
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/cameras", tags=["cameras"])
@@ -60,10 +69,11 @@ async def list_cameras(user: str = Depends(require_auth)):
 @router.post("", status_code=201)
 async def add_camera(body: CameraCreate, user: str = Depends(require_auth)):
     """Add a new camera."""
+    body.name = _sanitize_name(body.name)
     config = config_module.load_config()
 
     # Auto-generate ID from name
-    name_slug = body.name.lower().replace(" ", "_")
+    name_slug = re.sub(r"[^a-z0-9_]", "", body.name.lower().replace(" ", "_"))
     cam_count = len(config.get("cameras", []))
     camera_id = f"cam_{name_slug}_{cam_count}"
 
@@ -85,6 +95,8 @@ async def update_camera(
     user: str = Depends(require_auth),
 ):
     """Update camera configuration."""
+    if body.name is not None:
+        body.name = _sanitize_name(body.name)
     config = config_module.load_config()
     cameras = config.get("cameras", [])
 

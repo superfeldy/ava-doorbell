@@ -41,10 +41,16 @@ async def restore_config(request: Request, user: str = Depends(require_auth)):
         if not file:
             raise HTTPException(status_code=400, detail="No file provided")
         content = await file.read()
-        config_data = json.loads(content)
+        try:
+            config_data = json.loads(content)
+        except (json.JSONDecodeError, UnicodeDecodeError):
+            raise HTTPException(status_code=400, detail="Invalid JSON file")
         config = config_data.get("config", config_data)
     else:
-        data = await request.json()
+        try:
+            data = await request.json()
+        except Exception:
+            raise HTTPException(status_code=400, detail="Invalid JSON body")
         config = data.get("config", {})
 
     if not config:

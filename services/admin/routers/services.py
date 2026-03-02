@@ -79,7 +79,9 @@ async def restart_service_endpoint(service: str, user: str = Depends(require_aut
     """Restart a specific systemd service."""
     if service not in ALL_SERVICES:
         raise HTTPException(status_code=400, detail=f"Unknown service: {service}")
-    if _restart_service(service):
+    # 30s cooldown for go2rtc to prevent rapid restart damage
+    skip = 30 if service == "go2rtc" else 10
+    if _restart_service(service, skip_if_recent=skip):
         return {"status": "restarted"}
     raise HTTPException(status_code=500, detail="Restart failed")
 
@@ -124,7 +126,7 @@ async def api_status(user: str = Depends(require_auth)):
 @router.get("/logs")
 async def api_logs(
     service: str = Query("all"),
-    lines: int = Query(100, le=500),
+    lines: int = Query(100, ge=1, le=500),
     since: str = Query(""),
     user: str = Depends(require_auth),
 ):

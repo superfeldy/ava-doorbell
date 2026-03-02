@@ -24,7 +24,7 @@ class CameraConfig(BaseModel):
 
 
 class CameraCreate(BaseModel):
-    name: str
+    name: str = Field(..., min_length=1, max_length=100)
     url: str = Field(..., pattern=r"^rtsp://")
     main_url: str = ""
     type: str = "direct"

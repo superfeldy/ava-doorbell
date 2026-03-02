@@ -4,6 +4,14 @@
 
 ### Fixed
 - Swipe gesture detection: added VelocityTracker for velocity-based recognition, diagonal rejection (horizontal must exceed 2x vertical), ACTION_CANCEL handling to prevent lost swipes, and 400 px/sec minimum velocity threshold
+- Rate limit lockout: correct password now clears rate limit after fat-finger lockout
+- Empty camera name validation: rejected at model level (min_length=1)
+- XSS in camera name: HTML tags stripped on create/update, ID slug sanitized
+- go2rtc restart cooldown: 30s cooldown applied to individual restart endpoint (was only on restart-all)
+- Config restore error handling: bad JSON returns 400 instead of 500
+- Negative log lines: `ge=1` constraint on lines parameter
+- Android URL injection: `Uri.encode()` applied to defaultCamera in all URL builders
+- Android camera name validation: alphanumeric + hyphens/underscores only
 
 ### Added
 - `deploy.sh` — push updates from Mac to Pi via SSH/rsync

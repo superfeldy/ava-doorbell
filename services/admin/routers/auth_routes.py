@@ -33,21 +33,13 @@ async def login(request: Request):
     password = form.get("password", "")
     ip = request.client.host if request.client else "unknown"
 
-    # Rate limiting
-    if not auth.check_rate_limit(ip):
-        logger.warning(f"Rate limit exceeded for IP {ip}")
-        return templates.TemplateResponse(
-            "login.html",
-            {"request": request, "error": "Too many attempts. Try again later."},
-            status_code=429,
-        )
+    # Rate limiting check (still verify password even if rate-limited)
+    rate_limited = not auth.check_rate_limit(ip)
 
     config = config_module.load_config()
     password_hash = config.get("admin", {}).get("password_hash", "")
 
     if not password_hash:
-        # No password set — should only happen if setup wizard wasn't completed
-        # but someone navigated to /login directly
         return templates.TemplateResponse(
             "login.html",
             {"request": request, "error": "No password configured. Complete setup first."},
@@ -55,12 +47,22 @@ async def login(request: Request):
         )
 
     if auth.verify_password(password, password_hash):
+        # Correct password clears rate limit (fat-finger recovery)
+        auth.clear_rate_limit(ip)
         timeout = config.get("admin", {}).get("session_timeout_minutes", 60) * 60
         request.session["user_id"] = "admin"
         request.session["last_activity"] = __import__("time").time()
         request.session["_timeout"] = timeout
         logger.info(f"Login successful from {ip}")
         return RedirectResponse("/", status_code=303)
+
+    if rate_limited:
+        logger.warning(f"Rate limit exceeded for IP {ip}")
+        return templates.TemplateResponse(
+            "login.html",
+            {"request": request, "error": "Too many attempts. Try again later."},
+            status_code=429,
+        )
 
     # Only count failed attempts toward the rate limit
     auth.record_failed_attempt(ip)
