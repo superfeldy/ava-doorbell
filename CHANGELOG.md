@@ -1,5 +1,21 @@
 # Changelog
 
+## [4.1] - 2026-03-02
+
+### Fixed
+- Swipe gesture detection: added VelocityTracker for velocity-based recognition, diagonal rejection (horizontal must exceed 2x vertical), ACTION_CANCEL handling to prevent lost swipes, and 400 px/sec minimum velocity threshold
+
+### Added
+- `deploy.sh` — push updates from Mac to Pi via SSH/rsync
+- `update.sh` — pull updates from GitHub on Pi
+- `log_tail.sh` — stream Pi service logs remotely
+- `/api/logs/download` endpoint for log file export
+- Tailscale remote access documentation in SETUP.md
+
+### Infrastructure
+- GitHub Release v4.1 with APK artifact
+- Deploy key support for Pi-side git pull
+
 ## [4.0] - 2026-02-24
 
 ### Added

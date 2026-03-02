@@ -20,6 +20,7 @@ import android.os.VibrationEffect
 import android.os.Vibrator
 import android.util.Log
 import android.view.MotionEvent
+import android.view.VelocityTracker
 import android.view.View
 import android.webkit.PermissionRequest
 import android.webkit.RenderProcessGoneDetail
@@ -88,6 +89,7 @@ class CinemaActivity : AppCompatActivity() {
         private const val GO2RTC_PORT = 1984
         private const val GO2RTC_RTSP_PORT = 8554
         private const val SWIPE_THRESHOLD = 150f
+        private const val SWIPE_VELOCITY_MIN = 400f  // px/sec
         const val EXTRA_ANSWER_DOORBELL = "com.doorbell.ava.ANSWER_DOORBELL"
         const val EXTRA_TALK_ENABLED = "com.doorbell.ava.TALK_ENABLED"
     }
@@ -460,6 +462,7 @@ class CinemaActivity : AppCompatActivity() {
     }
 
     private var longPressRunnable: Runnable? = null
+    private var velocityTracker: VelocityTracker? = null
 
     private fun setupTouchOverlay() {
         touchOverlay.setOnTouchListener { _, event ->
@@ -479,11 +482,16 @@ class CinemaActivity : AppCompatActivity() {
                     lastTouchY = event.y
                     touchStartX = event.x  // V4: swipe tracking
 
+                    velocityTracker?.recycle()
+                    velocityTracker = VelocityTracker.obtain()
+                    velocityTracker?.addMovement(event)
+
                     longPressRunnable = Runnable { openConfigActivity() }
                     touchOverlay.postDelayed(longPressRunnable!!, LONG_PRESS_MS)
                     true
                 }
                 MotionEvent.ACTION_MOVE -> {
+                    velocityTracker?.addMovement(event)
                     val dx = event.x - lastTouchX
                     val dy = event.y - lastTouchY
                     val distance = sqrt((dx * dx + dy * dy).toDouble())
@@ -493,41 +501,54 @@ class CinemaActivity : AppCompatActivity() {
                     }
                     true
                 }
-                MotionEvent.ACTION_UP -> {
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                     longPressRunnable?.let { touchOverlay.removeCallbacks(it) }
                     longPressRunnable = null
 
-                    // V4: Detect horizontal swipe for layout cycling
-                    val swipeX = event.x - touchStartX
-                    if (kotlin.math.abs(swipeX) > SWIPE_THRESHOLD) {
-                        // Dismiss swipe hint immediately — user discovered the gesture
-                        if (swipeHint.visibility == View.VISIBLE) {
-                            swipeHint.clearAnimation()
-                            swipeHint.visibility = View.GONE
-                        }
-                        val currentLayout = settingsManager.getDefaultLayout()
-                        val currentIdx = layoutSizes.indexOf(currentLayout).coerceAtLeast(0)
-                        val nextIdx = if (swipeX < 0) {
-                            // Swipe left → next layout (wrap around)
-                            (currentIdx + 1) % layoutSizes.size
-                        } else {
-                            // Swipe right → previous layout (wrap around)
-                            (currentIdx - 1 + layoutSizes.size) % layoutSizes.size
-                        }
-                        switchToLayout(layoutSizes[nextIdx])
+                    trySwipe(event)
+
+                    velocityTracker?.recycle()
+                    velocityTracker = null
+
+                    if (event.action == MotionEvent.ACTION_UP) {
+                        touchOverlay.performClick()
                     }
-
-                    touchOverlay.performClick()
-                    true
-                }
-                MotionEvent.ACTION_CANCEL -> {
-                    longPressRunnable?.let { touchOverlay.removeCallbacks(it) }
-                    longPressRunnable = null
                     true
                 }
                 else -> true
             }
         }
+    }
+
+    /** Detect a horizontal swipe and cycle layout if criteria are met. */
+    private fun trySwipe(event: MotionEvent) {
+        val swipeX = event.x - touchStartX
+        val swipeY = event.y - lastTouchY
+        val absX = kotlin.math.abs(swipeX)
+        val absY = kotlin.math.abs(swipeY)
+
+        // Must be predominantly horizontal and exceed distance threshold
+        if (absX <= SWIPE_THRESHOLD || absX < absY * 2) return
+
+        // Must exceed minimum velocity
+        velocityTracker?.computeCurrentVelocity(1000)  // px/sec
+        val vx = kotlin.math.abs(velocityTracker?.xVelocity ?: 0f)
+        if (vx < SWIPE_VELOCITY_MIN) return
+
+        // Dismiss swipe hint — user discovered the gesture
+        if (swipeHint.visibility == View.VISIBLE) {
+            swipeHint.clearAnimation()
+            swipeHint.visibility = View.GONE
+        }
+
+        val currentLayout = settingsManager.getDefaultLayout()
+        val currentIdx = layoutSizes.indexOf(currentLayout).coerceAtLeast(0)
+        val nextIdx = if (swipeX < 0) {
+            (currentIdx + 1) % layoutSizes.size
+        } else {
+            (currentIdx - 1 + layoutSizes.size) % layoutSizes.size
+        }
+        switchToLayout(layoutSizes[nextIdx])
     }
 
     private fun openConfigActivity() {
