@@ -265,6 +265,30 @@ http://<PI_IP>:5000/api/logs/download?service=ava-admin&since=1%20hour%20ago
 
 ---
 
+## Security Notes
+
+### What's Protected
+- **Login**: Rate-limited to 5 wrong attempts per 15 minutes per IP. Correct password always works (clears lockout).
+- **API endpoints**: All management endpoints require session or API token auth. Public endpoints: `/view`, `/api/health`, `/app/download`.
+- **Config keys**: `admin`, `version`, `setup_complete` are blocked from API modification.
+- **Camera names**: HTML tags stripped on create/update. IDs are slug-sanitized (alphanumeric + underscore only).
+- **Service restarts**: go2rtc has 30s cooldown, other services 10s cooldown, systemd has crash-loop protection.
+- **Restore endpoint**: Invalid JSON returns 400 (not 500). Existing admin block preserved on restore.
+- **Log API**: `lines` constrained to 1-500, `service` whitelist-only, `since` regex-validated.
+- **Android app**: Camera name validated (alphanumeric/hyphens/underscores), URLs use `Uri.encode()`.
+
+### What's Not Protected (by design)
+- **go2rtc API** (port 1984): No authentication — streams are accessible to anyone on the network. This is standard for go2rtc.
+- **MQTT** (port 1883): Anonymous access, LAN-only. Anyone on the network can publish/subscribe.
+- **HTTP** (port 5000): Unencrypted. Use Tailscale for remote access (encrypted tunnel).
+
+### Recommendations
+- Use Tailscale for all remote access (never port-forward 5000/1984/1883 to the internet)
+- Change the default admin password during setup
+- Use the admin dashboard to generate a unique API token for the Android app
+
+---
+
 ## Upgrading from v3
 
 1. Stop v3 services: `sudo systemctl stop ava-admin alarm-scanner ava-talk`

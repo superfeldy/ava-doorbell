@@ -14,6 +14,8 @@ A full-stack doorbell and camera monitoring system for Raspberry Pi. Streams Dah
 - [Requirements](#requirements)
 - [Installation](#installation)
 - [Configuration](#configuration)
+- [Security](#security)
+- [Deployment](#deployment)
 - [MQTT Topics](#mqtt-topics)
 - [Talk Relay Wire Format](#talk-relay-wire-format)
 - [MediaTek Compatibility](#mediatek-compatibility)
@@ -207,6 +209,59 @@ Configuration is stored in `config/config.json` on the Pi. Key sections:
 | `smb` | Samba file shares (config, services, recordings) |
 
 Protected keys (`admin`, `version`, `setup_complete`) cannot be modified via the API.
+
+## Security
+
+### Authentication & Authorization
+- **Admin dashboard**: Session-based auth with configurable timeout (default 60 min)
+- **API access**: Bearer token authentication (generated via dashboard)
+- **Rate limiting**: 5 attempts per 15-minute window per IP; correct password clears lockout
+- **Token storage**: EncryptedSharedPreferences (AES256-GCM) on Android
+
+### Input Validation
+- **Service management**: Whitelist-only service names (no shell injection possible)
+- **Camera names**: HTML tags stripped, min/max length enforced, slug sanitized
+- **Log parameters**: `since` regex-validated, `lines` constrained to 1-500
+- **Config restore**: JSON parse errors return 400 (not 500)
+- **Android settings**: IP format validated, ports range-checked, camera names alphanumeric-only
+- **URL construction**: `Uri.encode()` on all user-supplied URL parameters
+
+### Network Security
+- **MQTT**: Anonymous, LAN-only (no internet exposure by default)
+- **Tailscale**: Encrypted tunnel for remote access (no port forwarding needed)
+- **SSL/TLS**: Self-signed cert on port 5443, auto-regenerates on IP change
+- **WebSocket**: 64KB max message size to prevent DoS
+- **Protected config keys**: `admin`, `version`, `setup_complete` blocked from API writes
+
+### Restart Protection
+- **go2rtc**: 30-second cooldown between restarts (individual and bulk)
+- **Other services**: 10-second cooldown between restarts
+- **Systemd**: Crash-loop protection (5 restarts per 60 seconds max)
+
+## Deployment
+
+### Push from Mac
+```bash
+bash deploy.sh                     # sync + restart
+bash deploy.sh --build-apk         # also build + deploy APK
+bash deploy.sh --dry-run           # preview changes
+PI_HOST=100.x.y.z bash deploy.sh   # via Tailscale
+```
+
+### Pull from Pi
+```bash
+bash ~/ava-doorbell-repo/update.sh          # pull + restart
+bash ~/ava-doorbell-repo/update.sh --force  # skip up-to-date check
+```
+
+### Stream logs remotely
+```bash
+bash log_tail.sh                            # all services
+bash log_tail.sh ava-admin                  # single service
+PI_HOST=100.x.y.z bash log_tail.sh          # via Tailscale
+```
+
+See [SETUP.md](SETUP.md) for deploy key setup and Tailscale configuration.
 
 ## MQTT Topics
 
