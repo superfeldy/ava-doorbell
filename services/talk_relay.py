@@ -791,7 +791,8 @@ async def test_tone(config: Config) -> None:
         alaw_data.append(ALAW_TABLE[u])
 
     bc = DirectRtspBackchannel(config)
-    if await bc.connect():
+    err = await bc.connect()
+    if not err:
         # Write in chunks
         chunk_size = 320
         for i in range(0, len(alaw_data), chunk_size):
@@ -804,7 +805,7 @@ async def test_tone(config: Config) -> None:
         await bc.close()
         logger.info("Test tone sent successfully")
     else:
-        logger.error("Failed to connect for test tone")
+        logger.error(f"Failed to connect for test tone: {err}")
 
 
 async def main() -> None:

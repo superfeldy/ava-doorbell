@@ -153,12 +153,15 @@ export function captureImgElement(img) {
 export function freezeFrame(cell, video) {
     // Try capturing from the video element first
     let src = captureVideoFrame(video);
-    // If video had nothing, check if there's an MJPEG preview we can use
+    // If video had nothing, try the MJPEG preview as fallback
     if (!src) {
         const mjpegImg = cell.querySelector('.mjpeg-preview');
-        if (mjpegImg && mjpegImg.src && mjpegImg.src.startsWith('blob:')) {
-            // Can't toDataURL a blob img, but we can leave the MJPEG img in place
-            return;
+        if (mjpegImg) {
+            if (mjpegImg.src && mjpegImg.src.startsWith('blob:')) {
+                // Can't toDataURL a cross-origin blob, leave MJPEG in place
+                return;
+            }
+            src = captureImgElement(mjpegImg);
         }
     }
     if (src) {

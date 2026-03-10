@@ -174,10 +174,16 @@ async def proxy_frame(src: str = Query(...)):
         )
         if not resp.content:
             return Response(status_code=204)
+        if resp.status_code != 200:
+            return JSONResponse(
+                {"error": f"go2rtc returned {resp.status_code}"},
+                status_code=502,
+            )
         return Response(
             content=resp.content,
-            status_code=resp.status_code,
+            status_code=200,
             media_type="image/jpeg",
+            headers={"Cache-Control": "no-cache, no-store, must-revalidate"},
         )
     except Exception as e:
         err_str = str(e)

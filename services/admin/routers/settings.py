@@ -58,7 +58,8 @@ async def save_layouts(request: Request, user: str = Depends(require_auth)):
     layouts = await request.json()
     config = config_module.load_config()
     config["layouts"] = layouts
-    config_module.save_config(config)
+    if not config_module.save_config(config):
+        raise HTTPException(status_code=500, detail="Failed to save layouts")
     logger.info("Layouts updated")
     return {"status": "ok"}
 
@@ -126,7 +127,8 @@ async def change_password(body: PasswordChangeRequest, user: str = Depends(requi
         raise HTTPException(status_code=401, detail="Invalid current password")
 
     config.setdefault("admin", {})["password_hash"] = auth.hash_password(body.new_password)
-    config_module.save_config(config)
+    if not config_module.save_config(config):
+        raise HTTPException(status_code=500, detail="Failed to save password")
     logger.info("Admin password changed")
     return {"status": "ok"}
 

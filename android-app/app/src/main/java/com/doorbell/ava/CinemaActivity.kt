@@ -577,13 +577,21 @@ class CinemaActivity : AppCompatActivity() {
         showLayoutIndicator(layout)
 
         if (layout == "single") {
-            // Single camera: native video provides primary feed
+            // Single camera: native video provides primary feed.
+            // Don't show playerView until ExoPlayer has a decoded frame (STATE_READY)
+            // to avoid black flash.
             showingCachedStill = false
-            playerView.visibility = View.VISIBLE
-            mjpegPreview.visibility = View.VISIBLE
-            if (exoPlayer == null && !mjpegRunning) {
+            if (exoPlayer != null) {
+                // ExoPlayer already running — ensure it's visible
+                playerView.visibility = View.VISIBLE
+                mjpegPreview.visibility = View.GONE
+            } else if (!mjpegRunning) {
+                // No video running — start MJPEG as visible placeholder, then try RTSP.
+                // ExoPlayer STATE_READY will stop MJPEG and show playerView.
+                startMjpegFallback()
                 startNativeVideo()
             }
+            // If mjpegRunning (no exoPlayer), MJPEG is already showing — leave it
             webView.evaluateJavascript(
                 "if(typeof window.switchLayout==='function') window.switchLayout('$layout');"
             ) { }
@@ -890,7 +898,10 @@ class CinemaActivity : AppCompatActivity() {
         if (exoPlayer != null) return  // already running
         Log.i(TAG, "Starting native RTSP video")
 
-        stopMjpegFallback()  // stop any running MJPEG
+        // Don't stop MJPEG yet — keep it visible as a placeholder until
+        // ExoPlayer has decoded its first frame. This prevents:
+        //   - "cached image → black" when MJPEG is replaced before RTSP is ready
+        //   - "black → image" when playerView is shown before first frame
 
         val rtspUrl = buildRtspUrl()
         Log.i(TAG, "RTSP URL: $rtspUrl")
@@ -914,6 +925,8 @@ class CinemaActivity : AppCompatActivity() {
                         Log.i(TAG, "ExoPlayer RTSP: playing")
                         rtspConnected = true
                         playerView.visibility = View.VISIBLE
+                        // ExoPlayer has a frame — safe to remove MJPEG placeholder
+                        if (mjpegRunning) stopMjpegFallback()
                         mjpegPreview.visibility = View.GONE
                         hideLoadingOverlay()
                     }
@@ -934,14 +947,15 @@ class CinemaActivity : AppCompatActivity() {
             override fun onPlayerError(error: PlaybackException) {
                 Log.e(TAG, "ExoPlayer RTSP error: ${error.message} (code=${error.errorCode})")
                 rtspConnected = false
-                // Fall back to MJPEG
                 releaseExoPlayer()
-                startMjpegFallback()
+                // If MJPEG was still running as placeholder, let it continue.
+                // Otherwise start MJPEG fallback.
+                if (!mjpegRunning) startMjpegFallback()
             }
         })
 
         playerView.player = player
-        playerView.visibility = View.VISIBLE
+        // Don't show playerView yet — wait for STATE_READY with a decoded frame
         exoPlayer = player
         player.prepare()
     }
@@ -964,10 +978,10 @@ class CinemaActivity : AppCompatActivity() {
      */
     private fun scheduleRtspReconnect() {
         releaseExoPlayer()
+        // Start MJPEG immediately so the user sees video during the reconnect delay
+        if (!mjpegRunning) startMjpegFallback()
         Handler(Looper.getMainLooper()).postDelayed({
-            if (!mjpegRunning) {  // don't reconnect if already fell back to MJPEG
-                startNativeVideo()
-            }
+            startNativeVideo()  // keeps MJPEG as placeholder until STATE_READY
         }, 3000)
     }
 
@@ -1047,11 +1061,12 @@ class CinemaActivity : AppCompatActivity() {
         mjpegThread!!.isDaemon = true
         mjpegThread!!.start()
 
-        // Retry RTSP after 60s of MJPEG fallback
+        // Retry RTSP after 60s of MJPEG fallback.
+        // Don't stop MJPEG first — startNativeVideo() keeps it as a placeholder
+        // and only removes it once ExoPlayer has a decoded frame (STATE_READY).
         Handler(Looper.getMainLooper()).postDelayed({
             if (mjpegRunning && exoPlayer == null) {
                 Log.i(TAG, "Retrying RTSP after MJPEG fallback period")
-                stopMjpegFallback()
                 startNativeVideo()
             }
         }, 60_000)
@@ -1465,6 +1480,13 @@ class CinemaActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         webView.onResume()
+
+        // Fix stale mjpegRunning flag if thread died during pause
+        if (mjpegRunning && mjpegThread?.isAlive != true) {
+            Log.w(TAG, "MJPEG thread died during pause — resetting flag")
+            mjpegRunning = false
+            mjpegThread = null
+        }
 
         // V4 fix: Check forceReconnect flag from ConfigActivity
         if (settingsManager.getForceReconnect()) {

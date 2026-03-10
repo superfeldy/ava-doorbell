@@ -36,6 +36,9 @@ const activeConnections = {};
 /** Backoff state per camera. */
 const backoffStates = {};
 
+/** Pending reconnect timers per camera (to cancel on layout switch). */
+const reconnectTimers = {};
+
 /**
  * Get the preferred protocol for a camera, respecting expiry.
  */
@@ -129,11 +132,12 @@ export async function connectCamera(cameraId, cell, state) {
                     muted: state.muted,
                     onConnected: () => {
                         removeLoadingOverlay(cell);
-                        removeFrozenFrame(cell);
                         if (imgEl) stopMjpegPreview(cameraId, imgEl);
                         setPreferredProtocol(cameraId, 'webrtc');
                         recordSuccess(backoffStates[cameraId]);
                         updateCameraStatus(cell, 'live');
+                        // Defer frozen frame removal until video has a painted frame
+                        deferFrozenFrameRemoval(cell, videoEl);
                     },
                     onFailed: (reason) => {
                         console.warn(`[${cameraId}] WebRTC failed after connection: ${reason}`);
@@ -155,11 +159,12 @@ export async function connectCamera(cameraId, cell, state) {
                     muted: state.muted,
                     onConnected: () => {
                         removeLoadingOverlay(cell);
-                        removeFrozenFrame(cell);
                         if (imgEl) stopMjpegPreview(cameraId, imgEl);
                         setPreferredProtocol(cameraId, 'mse');
                         recordSuccess(backoffStates[cameraId]);
                         updateCameraStatus(cell, 'live');
+                        // Defer frozen frame removal until video has a painted frame
+                        deferFrozenFrameRemoval(cell, videoEl);
                     },
                     onFailed: (reason) => {
                         console.warn(`[${cameraId}] MSE failed: ${reason}`);
@@ -229,7 +234,11 @@ function scheduleReconnect(cameraId, cell, state) {
     const delay = getDelay(bs);
     showLoadingOverlay(cell, `Reconnecting in ${Math.round(delay / 1000)}s\u2026`);
 
-    setTimeout(() => {
+    // Cancel any existing reconnect timer for this camera
+    if (reconnectTimers[cameraId]) clearTimeout(reconnectTimers[cameraId]);
+
+    reconnectTimers[cameraId] = setTimeout(() => {
+        delete reconnectTimers[cameraId];
         if (!connectionInProgress[cameraId]) {
             connectCamera(cameraId, cell, state);
         }
@@ -276,6 +285,35 @@ export function resetBackoff(cameraId) {
         }
     }
     connectionInProgress[cameraId] = false;
+    // Cancel pending reconnect timer to prevent ghost connections to destroyed DOM
+    if (reconnectTimers[cameraId]) {
+        clearTimeout(reconnectTimers[cameraId]);
+        delete reconnectTimers[cameraId];
+    }
+}
+
+/**
+ * Defer frozen frame removal until the video element has a decoded frame,
+ * preventing a black flash between frozen frame and live video.
+ */
+function deferFrozenFrameRemoval(cell, videoEl) {
+    if (!cell.querySelector('.frozen-frame')) return;
+    if (videoEl && videoEl.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+        removeFrozenFrame(cell);
+    } else if (videoEl) {
+        const onReady = () => {
+            removeFrozenFrame(cell);
+            videoEl.removeEventListener('canplay', onReady);
+        };
+        videoEl.addEventListener('canplay', onReady);
+        // Safety timeout: remove after 3s regardless
+        setTimeout(() => {
+            videoEl.removeEventListener('canplay', onReady);
+            removeFrozenFrame(cell);
+        }, 3000);
+    } else {
+        removeFrozenFrame(cell);
+    }
 }
 
 /**

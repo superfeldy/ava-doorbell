@@ -76,6 +76,7 @@ function buildGrid(layoutName) {
     viewport.innerHTML = '';
     state.cells = {};
     state.currentLayout = layoutName;
+    state.talkCamera = null;
 
     for (let i = 0; i < slotCount; i++) {
         const cameraId = layoutCameras[i] || null;
