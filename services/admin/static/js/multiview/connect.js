@@ -6,16 +6,16 @@
  * concurrent cascade attempts via connectionInProgress flags.
  */
 
-import { tryWebRTC, cleanupWebRTC } from './webrtc.js?v=4.10';
-import { tryMSE, cleanupMSE } from './mse.js?v=4.10';
-import { startMjpegPreview, stopMjpegPreview } from './mjpeg.js?v=4.10';
+import { tryWebRTC, cleanupWebRTC } from './webrtc.js?v=4.11';
+import { tryMSE, cleanupMSE } from './mse.js?v=4.11';
+import { startMjpegPreview, stopMjpegPreview } from './mjpeg.js?v=4.11';
 import {
     createBackoffState, recordFailure, recordSuccess,
     getDelay, isMaxedOut,
     freezeFrame, removeFrozenFrame,
     showReconnectOverlay, removeReconnectOverlay,
     showLoadingOverlay, removeLoadingOverlay,
-} from './reconnect.js?v=4.10';
+} from './reconnect.js?v=4.11';
 
 /** Check URL for forced MJPEG mode (Android WebView on devices with broken MSE). */
 const forceMjpeg = new URLSearchParams(location.search).get('mode') === 'mjpeg';
@@ -93,12 +93,22 @@ export async function connectCamera(cameraId, cell, state) {
     // broken hardware video decoding), skip MSE/WebRTC entirely.
     if (forceMjpeg) {
         console.log(`[${cameraId}] MJPEG-only mode — skipping MSE/WebRTC`);
-        removeLoadingOverlay(cell);
         if (imgEl) {
             imgEl.style.display = 'block';
             if (videoEl) videoEl.style.display = 'none';
+            // Show spinner until first MJPEG frame arrives (unless frozen frame is showing)
+            if (!cell.querySelector('.frozen-frame')) {
+                showLoadingOverlay(cell, 'Connecting\u2026');
+            }
+            imgEl.addEventListener('load', () => {
+                removeLoadingOverlay(cell);
+                removeFrozenFrame(cell);
+                updateCameraStatus(cell, 'live');
+            }, { once: true });
+        } else {
+            removeLoadingOverlay(cell);
+            updateCameraStatus(cell, 'live');
         }
-        updateCameraStatus(cell, 'live');
         connectionInProgress[cameraId] = false;
         return;
     }

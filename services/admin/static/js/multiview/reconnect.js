@@ -119,6 +119,26 @@ export function captureVideoFrame(video) {
     }
 }
 
+/**
+ * Capture an MJPEG <img> element's current frame as a JPEG data-URL.
+ *
+ * @param {HTMLImageElement} img
+ * @returns {string|null}  data:image/jpeg URL, or null on failure.
+ */
+export function captureImgElement(img) {
+    try {
+        if (!img || !img.src || !img.naturalWidth) return null;
+        const canvas = document.createElement('canvas');
+        canvas.width = img.naturalWidth;
+        canvas.height = img.naturalHeight;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0);
+        return canvas.toDataURL('image/jpeg', 0.8);
+    } catch (e) {
+        return null; // Security / cross-origin — ignore
+    }
+}
+
 // ------------------------------------------------------------------
 // FROZEN FRAME (seamless reconnect)
 // ------------------------------------------------------------------

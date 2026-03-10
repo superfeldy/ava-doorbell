@@ -9,7 +9,7 @@
  * - Heartbeat silence frames every 1s during pauses
  */
 
-import { setTalkState } from './controls.js?v=4.10';
+import { setTalkState } from './controls.js?v=4.11';
 
 const TARGET_SAMPLE_RATE = 8000;
 const BUFFER_SIZE = 2048;

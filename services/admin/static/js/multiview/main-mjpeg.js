@@ -9,9 +9,10 @@
  * Just MJPEG <img> elements pointed at go2rtc's stream endpoint.
  */
 
-import { startMjpegPreview, stopAllMjpeg } from './mjpeg.js?v=4.10';
-import { initControls, setTalkVisible, getLayoutSizes } from './controls.js?v=4.10';
-import { initFullscreen, exitFullscreen } from './fullscreen.js?v=4.10';
+import { startMjpegPreview, stopAllMjpeg } from './mjpeg.js?v=4.11';
+import { initControls, setTalkVisible, getLayoutSizes } from './controls.js?v=4.11';
+import { initFullscreen, exitFullscreen } from './fullscreen.js?v=4.11';
+import { captureImgElement } from './reconnect.js?v=4.11';
 
 console.log('MJPEG-only mode: MSE/WebRTC disabled (server-side template)');
 
@@ -43,6 +44,16 @@ const viewport = document.getElementById('viewport');
 
 function buildGrid(layoutName) {
     if (!viewport) return;
+
+    // Capture MJPEG frames before destroying cells
+    const cachedFrames = {};
+    for (const [cameraId, cell] of Object.entries(state.cells)) {
+        const mjpeg = cell.querySelector('.mjpeg-preview');
+        if (mjpeg) {
+            const src = captureImgElement(mjpeg);
+            if (src) cachedFrames[cameraId] = src;
+        }
+    }
 
     stopAllMjpeg();
     exitFullscreen();
@@ -76,6 +87,14 @@ function buildGrid(layoutName) {
             cell.dataset.cameraId = cameraId;
             state.cells[cameraId] = cell;
 
+            // Restore cached frame as placeholder while MJPEG reconnects
+            if (cachedFrames[cameraId]) {
+                const frozenImg = document.createElement('img');
+                frozenImg.className = 'frozen-frame';
+                frozenImg.src = cachedFrames[cameraId];
+                cell.appendChild(frozenImg);
+            }
+
             if (rotation) {
                 cell.classList.add(`rotate-${rotation}`);
             }
@@ -97,8 +116,10 @@ function buildGrid(layoutName) {
         const imgEl = cell.querySelector('.mjpeg-preview');
         if (imgEl) {
             startMjpegPreview(cameraId, imgEl);
-            // Update status dot when image loads
+            // Remove frozen frame and update status on first live frame
             imgEl.addEventListener('load', () => {
+                const frozen = cell.querySelector('.frozen-frame');
+                if (frozen) frozen.remove();
                 const dot = cell.querySelector('.camera-status');
                 if (dot) dot.className = 'camera-status live';
             }, { once: true });
@@ -111,6 +132,7 @@ function buildGrid(layoutName) {
 // ============================================================================
 
 function switchLayout(layoutName) {
+    exitFullscreen();  // clear any per-cell fullscreen before switching
     console.log(`Switching to layout: ${layoutName}`);
     buildGrid(layoutName);
 }

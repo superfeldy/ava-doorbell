@@ -6,11 +6,12 @@
  * and exposes WebView bridge APIs for Android.
  */
 
-import { connectCamera, cleanupConnection, disconnectAll, resetBackoff } from './connect.js?v=4.10';
-import { stopAllMjpeg } from './mjpeg.js?v=4.10';
-import { initControls, setTalkVisible, getLayoutSizes } from './controls.js?v=4.10';
-import { startTalk, stopTalk } from './talk.js?v=4.10';
-import { initFullscreen, exitFullscreen } from './fullscreen.js?v=4.10';
+import { connectCamera, cleanupConnection, disconnectAll, resetBackoff } from './connect.js?v=4.11';
+import { stopAllMjpeg } from './mjpeg.js?v=4.11';
+import { initControls, setTalkVisible, getLayoutSizes } from './controls.js?v=4.11';
+import { startTalk, stopTalk } from './talk.js?v=4.11';
+import { initFullscreen, exitFullscreen } from './fullscreen.js?v=4.11';
+import { captureVideoFrame, captureImgElement } from './reconnect.js?v=4.11';
 
 // ============================================================================
 // Global State
@@ -45,6 +46,20 @@ const viewport = document.getElementById('viewport');
  */
 function buildGrid(layoutName) {
     if (!viewport) return;
+
+    // Capture frozen frames from all current cells before destroying them.
+    // These are injected into new cells so users see the last frame instead
+    // of black boxes while streams reconnect.
+    const cachedFrames = {};
+    for (const [cameraId, cell] of Object.entries(state.cells)) {
+        const video = cell.querySelector('video');
+        let src = captureVideoFrame(video);
+        if (!src) {
+            const mjpeg = cell.querySelector('.mjpeg-preview');
+            if (mjpeg) src = captureImgElement(mjpeg);
+        }
+        if (src) cachedFrames[cameraId] = src;
+    }
 
     // Clean up existing connections
     disconnectAll(state.cells);
@@ -82,6 +97,14 @@ function buildGrid(layoutName) {
             cell.dataset.cameraId = cameraId;
             state.cells[cameraId] = cell;
 
+            // Restore cached frame as a frozen-frame placeholder
+            if (cachedFrames[cameraId]) {
+                const frozenImg = document.createElement('img');
+                frozenImg.className = 'frozen-frame';
+                frozenImg.src = cachedFrames[cameraId];
+                cell.appendChild(frozenImg);
+            }
+
             // Apply rotation to video and MJPEG preview
             if (rotation) {
                 cell.classList.add(`rotate-${rotation}`);
@@ -113,6 +136,7 @@ function buildGrid(layoutName) {
 // ============================================================================
 
 function switchLayout(layoutName) {
+    exitFullscreen();  // clear any per-cell fullscreen before switching
     console.log(`Switching to layout: ${layoutName}`);
     buildGrid(layoutName);
 }
@@ -265,6 +289,8 @@ async function init() {
 // ============================================================================
 // WebView Bridge (Android postMessage API)
 // ============================================================================
+
+window.switchLayout = switchLayout;
 
 window.switchCamera = (cameraId) => {
     state.layouts.single = [cameraId];

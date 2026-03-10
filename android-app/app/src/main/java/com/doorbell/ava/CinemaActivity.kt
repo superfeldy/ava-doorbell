@@ -208,6 +208,8 @@ class CinemaActivity : AppCompatActivity() {
         // instead of wasting ~18s on 3 doomed WebView attempts.
         if (isMediaTek) {
             Log.i(TAG, "MediaTek chipset detected (${Build.HARDWARE}/${Build.BOARD}) — using MJPEG-only mode")
+            // Force single layout — multi-up requires WebView which doesn't work on MediaTek
+            settingsManager.setDefaultLayout("single")
         }
 
         val persistedFailures = settingsManager.getWebViewFailureCount()
@@ -249,7 +251,8 @@ class CinemaActivity : AppCompatActivity() {
         }
 
         // Show swipe hint so users discover the layout switching gesture
-        showSwipeHint()
+        // (Skip on MediaTek — multi-up layouts are blocked due to WebView bugs)
+        if (!isMediaTek) showSwipeHint()
     }
 
     private fun initializeViews() {
@@ -307,12 +310,9 @@ class CinemaActivity : AppCompatActivity() {
                 setRendererPriorityPolicy(WebView.RENDERER_PRIORITY_IMPORTANT, false)
             }
 
-            // Clear HTTP cache on startup for MediaTek only — their WebView
-            // renderer process fails to start when cache grows large (54MB+).
-            // Non-MediaTek devices keep cache for faster subsequent loads.
-            if (isMediaTek) {
-                clearCache(true)
-            }
+            // Clear HTTP cache on every fresh start — JS files change on
+            // deploy and cache busters alone may not flush in-memory cache.
+            clearCache(true)
 
             isFocusable = true
             isFocusableInTouchMode = true
@@ -528,12 +528,19 @@ class CinemaActivity : AppCompatActivity() {
         val absY = kotlin.math.abs(swipeY)
 
         // Must be predominantly horizontal and exceed distance threshold
-        if (absX <= SWIPE_THRESHOLD || absX < absY * 2) return
+        if (absX <= SWIPE_THRESHOLD || absX < absY * 2) {
+            Log.d(TAG, "trySwipe rejected: dx=$absX dy=$absY (threshold=$SWIPE_THRESHOLD, need dx>2*dy)")
+            return
+        }
 
         // Must exceed minimum velocity
         velocityTracker?.computeCurrentVelocity(1000)  // px/sec
         val vx = kotlin.math.abs(velocityTracker?.xVelocity ?: 0f)
-        if (vx < SWIPE_VELOCITY_MIN) return
+        if (vx < SWIPE_VELOCITY_MIN) {
+            Log.d(TAG, "trySwipe rejected: vx=$vx (min=$SWIPE_VELOCITY_MIN)")
+            return
+        }
+        Log.d(TAG, "trySwipe accepted: dx=$absX dy=$absY vx=$vx")
 
         // Dismiss swipe hint — user discovered the gesture
         if (swipeHint.visibility == View.VISIBLE) {
@@ -564,6 +571,14 @@ class CinemaActivity : AppCompatActivity() {
      * as a cached still while the WebView multiview grid loads.
      */
     private fun switchToLayout(layout: String) {
+        // MediaTek devices can't render WebView multi-up layouts (renderer stalls
+        // at 10%). Block multi-up entirely and keep native single-camera view.
+        if (isMediaTek && layout != "single") {
+            Log.i(TAG, "MediaTek: multi-up layout '$layout' not supported — staying on single")
+            Toast.makeText(this, "Multi-view not available on this device", Toast.LENGTH_SHORT).show()
+            return
+        }
+
         settingsManager.setDefaultLayout(layout)
         showLayoutIndicator(layout)
 
@@ -580,27 +595,17 @@ class CinemaActivity : AppCompatActivity() {
             ) { }
             Log.i(TAG, "Layout: single — native video on top")
         } else {
-            // Multi-camera: hide native video overlays, show WebView multiview grid.
-            // Don't show a single-camera cached still on top — it would cover
-            // the entire multiview grid. Let the WebView cells load individually
-            // (each cell has a black background until its MJPEG stream starts).
+            // Multi-camera: stop native video but keep the last MJPEG frame
+            // visible as a cached still while the WebView multiview grid loads.
+            // The still is hidden once the WebView reaches 80% or onPageFinished.
             stopNativeVideo()
             playerView.visibility = View.GONE
-            mjpegPreview.visibility = View.GONE
-            showingCachedStill = false
-
-            // On MediaTek, WebView multiprocess never works — stay in single MJPEG.
-            // Snap back to single layout instead of loading a doomed WebView.
-            if (isMediaTek) {
-                Log.w(TAG, "Layout: $layout requested but MediaTek — forcing single (WebView unavailable)")
-                settingsManager.setDefaultLayout("single")
-                showLayoutIndicator("single")
-                playerView.visibility = View.VISIBLE
+            if (mjpegPreview.drawable != null) {
                 mjpegPreview.visibility = View.VISIBLE
-                if (exoPlayer == null && !mjpegRunning) {
-                    startNativeVideo()
-                }
-                return
+                showingCachedStill = true
+            } else {
+                mjpegPreview.visibility = View.GONE
+                showingCachedStill = false
             }
 
             // Ensure WebView is visible and loaded — it may be GONE if device
@@ -615,6 +620,17 @@ class CinemaActivity : AppCompatActivity() {
                 webView.evaluateJavascript(
                     "if(typeof window.switchLayout==='function') window.switchLayout('$layout');"
                 ) { }
+                // WebView already loaded — page won't reload, so hide cached still
+                // after a brief delay (lets the grid rebuild before removing the still).
+                if (showingCachedStill) {
+                    Handler(Looper.getMainLooper()).postDelayed({
+                        if (showingCachedStill) {
+                            showingCachedStill = false
+                            mjpegPreview.visibility = View.GONE
+                            Log.d(TAG, "Cached still hidden (timeout)")
+                        }
+                    }, 1500)
+                }
             }
             Log.i(TAG, "Layout: $layout — WebView multiview visible")
         }
