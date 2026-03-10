@@ -8,6 +8,7 @@ import getpass
 import logging
 import os
 import subprocess
+import tempfile
 
 logger = logging.getLogger(__name__)
 
@@ -67,15 +68,20 @@ def regenerate_smb_conf(config: dict) -> bool:
 
         conf_content = "\n".join(conf_lines) + "\n"
 
-        tmp_path = "/tmp/ava-smb.conf"
-        with open(tmp_path, "w") as f:
-            f.write(conf_content)
-
-        subprocess.run(
-            ["sudo", "cp", tmp_path, "/etc/samba/ava-smb.conf"],
-            capture_output=True, timeout=5,
-        )
-        os.remove(tmp_path)
+        fd, tmp_path = tempfile.mkstemp(prefix="ava-smb-", suffix=".conf")
+        try:
+            with os.fdopen(fd, "w") as f:
+                f.write(conf_content)
+            os.chmod(tmp_path, 0o600)
+            subprocess.run(
+                ["sudo", "cp", tmp_path, "/etc/samba/ava-smb.conf"],
+                capture_output=True, timeout=5,
+            )
+        finally:
+            try:
+                os.remove(tmp_path)
+            except OSError:
+                pass
 
         logger.info("Samba configuration regenerated")
         return True

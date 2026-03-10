@@ -285,11 +285,11 @@ class CinemaActivity : AppCompatActivity() {
         webView.apply {
             settings.apply {
                 javaScriptEnabled = true
-                domStorageEnabled = true
+                domStorageEnabled = false
                 mediaPlaybackRequiresUserGesture = false
                 mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
-                allowContentAccess = true
-                allowFileAccess = true
+                allowContentAccess = false
+                allowFileAccess = false
                 loadWithOverviewMode = true
                 useWideViewPort = true
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -317,7 +317,12 @@ class CinemaActivity : AppCompatActivity() {
 
             webChromeClient = object : WebChromeClient() {
                 override fun onPermissionRequest(request: PermissionRequest) {
-                    request.grant(request.resources)
+                    // Only grant audio/video capture — deny everything else
+                    val allowed = request.resources.filter {
+                        it == PermissionRequest.RESOURCE_VIDEO_CAPTURE ||
+                        it == PermissionRequest.RESOURCE_AUDIO_CAPTURE
+                    }.toTypedArray()
+                    if (allowed.isNotEmpty()) request.grant(allowed) else request.deny()
                 }
 
                 override fun onConsoleMessage(consoleMessage: android.webkit.ConsoleMessage?): Boolean {

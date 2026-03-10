@@ -135,7 +135,7 @@ async def api_logs(
     if service != "all" and service not in ALL_SERVICES:
         raise HTTPException(status_code=400, detail=f"Unknown service: {service}")
 
-    if since and not re.match(r'^[\d\-T: .+]+$', since):
+    if since and not re.match(r'^[\d\-T:.]+$', since):
         raise HTTPException(status_code=400, detail="Invalid 'since' format")
 
     try:

@@ -254,7 +254,8 @@ class DoorbellOverlayService : Service() {
             while (previewRunning) {
                 try {
                     val protocol = if (httpsEnabled) "https" else "http"
-                    val url = "$protocol://$serverIp:$adminPort/api/frame.jpeg?src=$cameraId&_t=${System.currentTimeMillis()}"
+                    val encodedCameraId = java.net.URLEncoder.encode(cameraId, "UTF-8")
+                    val url = "$protocol://$serverIp:$adminPort/api/frame.jpeg?src=$encodedCameraId&_t=${System.currentTimeMillis()}"
                     val conn = URL(url).openConnection()
                     if (conn is HttpsURLConnection) {
                         conn.sslSocketFactory = trustAllSslFactory

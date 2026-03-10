@@ -11,7 +11,8 @@
             <certificates src="user" />
         </trust-anchors>
     </domain-config>
-    <base-config cleartextTrafficPermitted="true">
+    <!-- Default: require HTTPS for non-local traffic -->
+    <base-config cleartextTrafficPermitted="false">
         <trust-anchors>
             <certificates src="system" />
         </trust-anchors>
