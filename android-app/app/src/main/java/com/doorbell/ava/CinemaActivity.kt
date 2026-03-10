@@ -207,9 +207,7 @@ class CinemaActivity : AppCompatActivity() {
         // Detect MediaTek and skip straight to MJPEG-only mode on first launch
         // instead of wasting ~18s on 3 doomed WebView attempts.
         if (isMediaTek) {
-            Log.i(TAG, "MediaTek chipset detected (${Build.HARDWARE}/${Build.BOARD}) — using MJPEG-only mode")
-            // Force single layout — multi-up requires WebView which doesn't work on MediaTek
-            settingsManager.setDefaultLayout("single")
+            Log.i(TAG, "MediaTek chipset detected (${Build.HARDWARE}/${Build.BOARD}) — native video on startup, WebView MJPEG grid on swipe")
         }
 
         val persistedFailures = settingsManager.getWebViewFailureCount()
@@ -251,8 +249,7 @@ class CinemaActivity : AppCompatActivity() {
         }
 
         // Show swipe hint so users discover the layout switching gesture
-        // (Skip on MediaTek — multi-up layouts are blocked due to WebView bugs)
-        if (!isMediaTek) showSwipeHint()
+        showSwipeHint()
     }
 
     private fun initializeViews() {
@@ -571,14 +568,6 @@ class CinemaActivity : AppCompatActivity() {
      * as a cached still while the WebView multiview grid loads.
      */
     private fun switchToLayout(layout: String) {
-        // MediaTek devices can't render WebView multi-up layouts (renderer stalls
-        // at 10%). Block multi-up entirely and keep native single-camera view.
-        if (isMediaTek && layout != "single") {
-            Log.i(TAG, "MediaTek: multi-up layout '$layout' not supported — staying on single")
-            Toast.makeText(this, "Multi-view not available on this device", Toast.LENGTH_SHORT).show()
-            return
-        }
-
         settingsManager.setDefaultLayout(layout)
         showLayoutIndicator(layout)
 
