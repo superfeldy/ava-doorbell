@@ -22,6 +22,9 @@ export function initBackup() {
 }
 
 async function downloadBackup() {
+    const btn = document.getElementById('downloadBackupBtn');
+    if (btn) { btn.disabled = true; btn.textContent = 'Downloading...'; }
+
     try {
         const resp = await fetchAPI('/api/backup');
         const blob = await resp.blob();
@@ -36,6 +39,8 @@ async function downloadBackup() {
         showToast('Backup downloaded', 'success');
     } catch (e) {
         showToast('Backup download failed', 'error');
+    } finally {
+        if (btn) { btn.disabled = false; btn.textContent = 'Download Backup'; }
     }
 }
 

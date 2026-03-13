@@ -208,7 +208,7 @@ class MqttManager(
         reconnectRunnable?.let { mainHandler.removeCallbacks(it) }
 
         val delay = minOf(
-            INITIAL_RECONNECT_MS * (1 shl reconnectAttempt),
+            INITIAL_RECONNECT_MS * (1 shl reconnectAttempt.coerceAtMost(14)),
             MAX_RECONNECT_MS
         )
 

@@ -10,6 +10,17 @@ import { showToast } from '../shared/toast.js';
 export function initDiscovery() {
     const scanBtn = document.getElementById('scanNetworkBtn');
     if (scanBtn) scanBtn.addEventListener('click', runDiscovery);
+
+    // Event delegation for dynamically-created Add buttons (avoids inline onclick XSS)
+    const grid = document.getElementById('discoveryResults');
+    if (grid) {
+        grid.addEventListener('click', (e) => {
+            const btn = e.target.closest('[data-action="add"]');
+            if (!btn) return;
+            const ip = btn.dataset.ip;
+            if (ip) addDiscovered(ip, btn);
+        });
+    }
 }
 
 async function runDiscovery() {
@@ -33,7 +44,7 @@ async function runDiscovery() {
                         <h4>${esc(dev.name || dev.ip)}</h4>
                         <p>${esc(dev.ip)}${dev.ports ? ' — ports: ' + dev.ports.join(', ') : ''}</p>
                     </div>
-                    <button class="btn btn-sm btn-primary" onclick="window._addDiscovered('${esc(dev.ip)}')">Add</button>
+                    <button class="btn btn-sm btn-primary" data-action="add" data-ip="${esc(dev.ip)}">Add</button>
                 </div>
             `).join('');
             showToast(`Found ${data.devices.length} devices`, 'success');
@@ -51,7 +62,9 @@ async function runDiscovery() {
     }
 }
 
-window._addDiscovered = async (ip) => {
+async function addDiscovered(ip, btn) {
+    if (btn) { btn.disabled = true; btn.textContent = 'Adding...'; }
+
     try {
         const resp = await fetchAPI('/api/discover-and-add', {
             method: 'POST',
@@ -62,13 +75,16 @@ window._addDiscovered = async (ip) => {
         if (resp.ok) {
             const data = await resp.json();
             showToast(`Added ${data.cameras_added || 0} camera(s)`, 'success');
+            if (btn) { btn.textContent = 'Added'; }
         } else {
             showToast('Failed to add device', 'error');
+            if (btn) { btn.disabled = false; btn.textContent = 'Add'; }
         }
     } catch (e) {
         showToast('Error adding device', 'error');
+        if (btn) { btn.disabled = false; btn.textContent = 'Add'; }
     }
-};
+}
 
 function esc(str) {
     const d = document.createElement('div');

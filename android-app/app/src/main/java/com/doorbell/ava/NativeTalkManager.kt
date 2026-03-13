@@ -78,11 +78,16 @@ class NativeTalkManager(private val context: Context) {
 
     var onStateChanged: ((TalkState) -> Unit)? = null
 
+    /** Human-readable reason for the most recent ERROR state. */
+    var lastErrorMessage: String? = null
+        private set
+
     enum class TalkState { IDLE, CONNECTING, ACTIVE, ERROR }
 
     private var pendingServerIp: String? = null
     private var pendingTalkPort: Int = 0
 
+    @Synchronized
     fun startTalk(serverIp: String, talkPort: Int) {
         if (recording.get()) return
 
@@ -90,6 +95,7 @@ class NativeTalkManager(private val context: Context) {
             != PackageManager.PERMISSION_GRANTED
         ) {
             Log.e(TAG, "RECORD_AUDIO permission not granted")
+            lastErrorMessage = "Microphone permission denied"
             onStateChanged?.invoke(TalkState.ERROR)
             return
         }
@@ -142,6 +148,7 @@ class NativeTalkManager(private val context: Context) {
                     connectWebSocket(wsUrl, fallbackToWs = false)
                 } else {
                     connected.set(false)
+                    lastErrorMessage = "Talk relay not responding"
                     stopTalk()
                     onStateChanged?.invoke(TalkState.ERROR)
                 }
@@ -155,13 +162,15 @@ class NativeTalkManager(private val context: Context) {
         })
     }
 
+    @Synchronized
     fun stopTalk() {
         recording.set(false)
         connected.set(false)
 
         recordThread?.let { thread ->
             thread.interrupt()
-            try { thread.join(500) } catch (_: InterruptedException) {}
+            try { thread.join(2000) } catch (_: InterruptedException) {}
+            if (thread.isAlive) Log.w(TAG, "Record thread still alive after join(2000)")
         }
         recordThread = null
 
@@ -196,6 +205,12 @@ class NativeTalkManager(private val context: Context) {
 
     private fun startRecording() {
         val minBufSize = AudioRecord.getMinBufferSize(SAMPLE_RATE, CHANNEL_CONFIG, AUDIO_FORMAT)
+        if (minBufSize <= 0) {
+            Log.e(TAG, "AudioRecord.getMinBufferSize returned error: $minBufSize")
+            lastErrorMessage = "Audio device not available"
+            onStateChanged?.invoke(TalkState.ERROR)
+            return
+        }
         val bufferSize = maxOf(minBufSize, CHUNK_BYTES * 4)
 
         try {
@@ -210,6 +225,7 @@ class NativeTalkManager(private val context: Context) {
             )
         } catch (e: SecurityException) {
             Log.e(TAG, "Cannot create AudioRecord: ${e.message}")
+            lastErrorMessage = "Microphone permission denied"
             onStateChanged?.invoke(TalkState.ERROR)
             return
         }
@@ -218,6 +234,7 @@ class NativeTalkManager(private val context: Context) {
             Log.e(TAG, "AudioRecord failed to initialize")
             audioRecord?.release()
             audioRecord = null
+            lastErrorMessage = "Microphone initialization failed"
             onStateChanged?.invoke(TalkState.ERROR)
             return
         }

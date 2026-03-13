@@ -39,9 +39,26 @@ export function showConfirm(title, message, options = {}) {
             resolve(result);
         }
 
+        const focusable = modal.querySelectorAll('button');
+        const firstFocusable = focusable[0];
+        const lastFocusable = focusable[focusable.length - 1];
+
         function onKey(e) {
-            if (e.key === 'Escape') close(false);
-            if (e.key === 'Enter') close(true);
+            if (e.key === 'Escape') { close(false); return; }
+            if (e.key === 'Enter') { close(true); return; }
+            if (e.key === 'Tab') {
+                if (e.shiftKey) {
+                    if (document.activeElement === firstFocusable) {
+                        e.preventDefault();
+                        lastFocusable.focus();
+                    }
+                } else {
+                    if (document.activeElement === lastFocusable) {
+                        e.preventDefault();
+                        firstFocusable.focus();
+                    }
+                }
+            }
         }
 
         modal.querySelector('.confirm-btn').addEventListener('click', () => close(true));

@@ -126,115 +126,109 @@ async def ws_talk_proxy(ws: WebSocket, token: str = Query("")):
     talk_port = server.get("talk_port", 5001)
 
     # Try wss first, fall back to ws
-    talk_ws = None
-    talk_session = None
-
     try:
-        talk_session = aiohttp.ClientSession()
+        async with aiohttp.ClientSession() as talk_session:
+            talk_ws = None
 
-        for proto in ("wss", "ws"):
-            talk_url = f"{proto}://localhost:{talk_port}"
+            for proto in ("wss", "ws"):
+                talk_url = f"{proto}://localhost:{talk_port}"
+                try:
+                    ssl_ctx = None
+                    if proto == "wss":
+                        ssl_ctx = ssl_module.SSLContext(ssl_module.PROTOCOL_TLS_CLIENT)
+                        ssl_ctx.check_hostname = False
+                        ssl_ctx.verify_mode = ssl_module.CERT_NONE
+
+                    talk_ws = await talk_session.ws_connect(
+                        talk_url, timeout=30, ssl=ssl_ctx
+                    )
+                    logger.info(f"[ws-talk] Connected to talk relay at {talk_url}")
+                    break
+                except Exception as e:
+                    logger.debug(f"[ws-talk] {proto} connection failed: {e}")
+                    talk_ws = None
+
+            if talk_ws is None:
+                logger.warning(f"[ws-talk] Talk relay unreachable on port {talk_port}")
+                try:
+                    await ws.send_json({"error": "Cannot reach talk relay — is ava-talk running?"})
+                except Exception:
+                    pass
+                await ws.close()
+                return
+
             try:
-                ssl_ctx = None
-                if proto == "wss":
-                    ssl_ctx = ssl_module.SSLContext(ssl_module.PROTOCOL_TLS_CLIENT)
-                    ssl_ctx.check_hostname = False
-                    ssl_ctx.verify_mode = ssl_module.CERT_NONE
+                async def browser_to_talk():
+                    try:
+                        while True:
+                            msg = await ws.receive()
+                            if msg["type"] == "websocket.disconnect":
+                                break
+                            if "text" in msg:
+                                await talk_ws.send_str(msg["text"])
+                            elif "bytes" in msg:
+                                await talk_ws.send_bytes(msg["bytes"])
+                    except WebSocketDisconnect:
+                        pass
+                    except Exception as e:
+                        logger.debug(f"[ws-talk] browser→talk ended: {e}")
 
-                talk_ws = await talk_session.ws_connect(
-                    talk_url, timeout=30, ssl=ssl_ctx
-                )
-                logger.info(f"[ws-talk] Connected to talk relay at {talk_url}")
-                break
+                async def talk_to_browser():
+                    try:
+                        async for msg in talk_ws:
+                            if msg.type == aiohttp.WSMsgType.BINARY:
+                                await ws.send_bytes(msg.data)
+                            elif msg.type == aiohttp.WSMsgType.TEXT:
+                                await ws.send_text(msg.data)
+                            elif msg.type in (aiohttp.WSMsgType.CLOSED, aiohttp.WSMsgType.ERROR):
+                                break
+                    except Exception as e:
+                        logger.debug(f"[ws-talk] talk→browser ended: {e}")
+
+                async def heartbeat():
+                    """Ping talk relay every 10s to keep connection alive."""
+                    try:
+                        while True:
+                            await asyncio.sleep(10)
+                            if talk_ws and not talk_ws.closed:
+                                await talk_ws.ping()
+                            else:
+                                break
+                    except Exception:
+                        pass
+
+                # Run all directions; cancel peers when one side disconnects
+                tasks = [
+                    asyncio.create_task(browser_to_talk()),
+                    asyncio.create_task(talk_to_browser()),
+                    asyncio.create_task(heartbeat()),
+                ]
+                try:
+                    done, pending = await asyncio.wait(
+                        tasks, return_when=asyncio.FIRST_COMPLETED
+                    )
+                    for t in pending:
+                        t.cancel()
+                    await asyncio.gather(*pending, return_exceptions=True)
+                except Exception:
+                    for t in tasks:
+                        t.cancel()
             except Exception as e:
-                logger.debug(f"[ws-talk] {proto} connection failed: {e}")
-                talk_ws = None
+                logger.debug(f"[ws-talk] Relay error: {e}")
+            finally:
+                try:
+                    await talk_ws.close()
+                except Exception:
+                    pass
+                try:
+                    await ws.close()
+                except Exception:
+                    pass
+                logger.info("[ws-talk] Connection closed")
+
     except Exception as e:
         logger.error(f"[ws-talk] Failed to create session: {e}")
-        if talk_session:
-            await talk_session.close()
-        await ws.close()
-        return
-
-    if talk_ws is None:
-        logger.warning(f"[ws-talk] Talk relay unreachable on port {talk_port}")
-        try:
-            await ws.send_json({"error": "Cannot reach talk relay — is ava-talk running?"})
-        except Exception:
-            pass
-        await talk_session.close()
-        await ws.close()
-        return
-
-    try:
-        async def browser_to_talk():
-            try:
-                while True:
-                    msg = await ws.receive()
-                    if msg["type"] == "websocket.disconnect":
-                        break
-                    if "text" in msg:
-                        await talk_ws.send_str(msg["text"])
-                    elif "bytes" in msg:
-                        await talk_ws.send_bytes(msg["bytes"])
-            except WebSocketDisconnect:
-                pass
-            except Exception as e:
-                logger.debug(f"[ws-talk] browser→talk ended: {e}")
-
-        async def talk_to_browser():
-            try:
-                async for msg in talk_ws:
-                    if msg.type == aiohttp.WSMsgType.BINARY:
-                        await ws.send_bytes(msg.data)
-                    elif msg.type == aiohttp.WSMsgType.TEXT:
-                        await ws.send_text(msg.data)
-                    elif msg.type in (aiohttp.WSMsgType.CLOSED, aiohttp.WSMsgType.ERROR):
-                        break
-            except Exception as e:
-                logger.debug(f"[ws-talk] talk→browser ended: {e}")
-
-        async def heartbeat():
-            """Ping talk relay every 10s to keep connection alive."""
-            try:
-                while True:
-                    await asyncio.sleep(10)
-                    if talk_ws and not talk_ws.closed:
-                        await talk_ws.ping()
-                    else:
-                        break
-            except Exception:
-                pass
-
-        # Run all directions; cancel peers when one side disconnects
-        tasks = [
-            asyncio.create_task(browser_to_talk()),
-            asyncio.create_task(talk_to_browser()),
-            asyncio.create_task(heartbeat()),
-        ]
-        try:
-            done, pending = await asyncio.wait(
-                tasks, return_when=asyncio.FIRST_COMPLETED
-            )
-            for t in pending:
-                t.cancel()
-            await asyncio.gather(*pending, return_exceptions=True)
-        except Exception:
-            for t in tasks:
-                t.cancel()
-    except Exception as e:
-        logger.debug(f"[ws-talk] Relay error: {e}")
-    finally:
-        try:
-            await talk_ws.close()
-        except Exception:
-            pass
-        try:
-            await talk_session.close()
-        except Exception:
-            pass
         try:
             await ws.close()
         except Exception:
             pass
-        logger.info("[ws-talk] Connection closed")

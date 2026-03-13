@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 _login_attempts: Dict[str, List[float]] = {}
 RATE_LIMIT_ATTEMPTS = 5
 RATE_LIMIT_WINDOW = 900  # 15 minutes
-SESSION_TIMEOUT = 3600   # 60 minutes (default, overridable via config)
+SESSION_TIMEOUT = 3600   # 60 minutes — server-side constant, not client-overridable
 
 
 # ============================================================================
@@ -112,8 +112,7 @@ def is_session_valid(session: dict) -> bool:
     if "user_id" not in session:
         return False
     last_activity = session.get("last_activity", 0)
-    timeout = session.get("_timeout", SESSION_TIMEOUT)
-    return (time.time() - last_activity) < timeout
+    return (time.time() - last_activity) < SESSION_TIMEOUT
 
 
 def refresh_session(session: dict) -> None:

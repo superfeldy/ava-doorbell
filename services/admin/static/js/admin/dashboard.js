@@ -77,8 +77,11 @@ function scheduleStatusRefresh() {
 export function initDashboard() {
     document.getElementById('refreshStatusBtn').addEventListener('click', refreshStatus);
 
-    document.getElementById('restartAllBtn').addEventListener('click', async () => {
+    const restartBtn = document.getElementById('restartAllBtn');
+    restartBtn.addEventListener('click', async () => {
         if (await showConfirm('Restart Services', 'Are you sure you want to restart all services? This will temporarily disconnect cameras.')) {
+            restartBtn.disabled = true;
+            restartBtn.textContent = 'Restarting...';
             try {
                 const response = await fetchAPI('/api/restart-all', { method: 'POST' });
                 if (response.ok) {
@@ -87,6 +90,11 @@ export function initDashboard() {
                 }
             } catch (error) {
                 showToast('Error restarting services', 'error');
+            } finally {
+                setTimeout(() => {
+                    restartBtn.disabled = false;
+                    restartBtn.textContent = 'Restart All';
+                }, 5000);
             }
         }
     });

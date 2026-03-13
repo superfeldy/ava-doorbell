@@ -31,8 +31,15 @@ const CODECS = [
  * Build a comma-separated codec string of supported codecs.
  */
 function getSupportedCodecs() {
+    if (typeof MediaSource === 'undefined') return '';
     return CODECS
-        .filter(codec => MediaSource.isTypeSupported(`video/mp4; codecs="${codec}"`))
+        .filter(codec => {
+            try {
+                return MediaSource.isTypeSupported(`video/mp4; codecs="${codec}"`);
+            } catch (e) {
+                return false;
+            }
+        })
         .join();
 }
 

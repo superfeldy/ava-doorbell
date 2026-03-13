@@ -154,7 +154,7 @@ async def proxy_webrtc(request: Request, src: str = Query(...)):
         )
     except Exception as e:
         logger.error(f"WebRTC proxy error: {e}")
-        return JSONResponse({"error": str(e)}, status_code=502)
+        return JSONResponse({"error": "Proxy error"}, status_code=502)
 
 
 def _get_go2rtc_port() -> int:
@@ -191,4 +191,4 @@ async def proxy_frame(src: str = Query(...)):
             logger.debug(f"Frame proxy: go2rtc unavailable ({e})")
         else:
             logger.warning(f"Frame proxy error: {e}")
-        return JSONResponse({"error": str(e)}, status_code=502)
+        return JSONResponse({"error": "Proxy error"}, status_code=502)

@@ -10,7 +10,10 @@
 let fullscreenCell = null;
 let touchStartX = 0;
 let touchStartY = 0;
+let lastToggleTime = 0;
+let initialized = false;
 const TAP_MOVE_THRESHOLD = 20; // px — ignore taps that moved too far (swipes)
+const TOGGLE_DEBOUNCE_MS = 300; // ignore rapid double-taps
 
 /**
  * Initialize fullscreen handling on camera cells.
@@ -19,6 +22,8 @@ const TAP_MOVE_THRESHOLD = 20; // px — ignore taps that moved too far (swipes)
  */
 export function initFullscreen(viewport) {
     if (!viewport) return;
+    if (initialized) return;
+    initialized = true;
 
     // Track touch start position to distinguish taps from swipes
     viewport.addEventListener('touchstart', (e) => {
@@ -35,7 +40,8 @@ export function initFullscreen(viewport) {
             const dist = Math.sqrt(dx * dx + dy * dy);
             if (dist < TAP_MOVE_THRESHOLD) {
                 const cell = e.target.closest('.camera-cell');
-                if (cell && !cell.classList.contains('empty')) {
+                if (cell && !cell.classList.contains('empty')
+                    && !cell.querySelector('.loading-overlay, .reconnect-overlay')) {
                     toggleFullscreen(cell);
                 }
             }
@@ -48,6 +54,7 @@ export function initFullscreen(viewport) {
         if (e.sourceCapabilities && e.sourceCapabilities.firesTouchEvents) return;
         const cell = e.target.closest('.camera-cell');
         if (!cell || cell.classList.contains('empty')) return;
+        if (cell.querySelector('.loading-overlay, .reconnect-overlay')) return;
         toggleFullscreen(cell);
     });
 
@@ -63,6 +70,10 @@ export function initFullscreen(viewport) {
  * Toggle fullscreen on a camera cell.
  */
 function toggleFullscreen(cell) {
+    const now = Date.now();
+    if (now - lastToggleTime < TOGGLE_DEBOUNCE_MS) return;
+    lastToggleTime = now;
+
     if (fullscreenCell === cell) {
         exitFullscreen();
     } else {

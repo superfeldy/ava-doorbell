@@ -54,14 +54,21 @@ function nextStep() {
     const stepId = steps[currentStep];
     const handler = stepHandlers[stepId];
 
+    // Prevent double-click: disable Next button during handler execution
+    const nextBtn = document.getElementById('next-btn');
+    if (nextBtn) nextBtn.disabled = true;
+
     if (handler) {
         handler().then(ok => {
             if (ok) showStep(currentStep + 1);
         }).catch(err => {
             showError(err.message || 'An error occurred');
+        }).finally(() => {
+            if (nextBtn) nextBtn.disabled = false;
         });
     } else {
         showStep(currentStep + 1);
+        if (nextBtn) nextBtn.disabled = false;
     }
 }
 

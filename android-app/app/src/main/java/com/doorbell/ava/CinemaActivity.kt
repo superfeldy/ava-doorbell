@@ -45,6 +45,7 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import org.json.JSONObject
 import java.security.cert.X509Certificate
 import java.util.concurrent.TimeUnit
 import javax.net.ssl.SSLContext
@@ -96,12 +97,15 @@ class CinemaActivity : AppCompatActivity() {
 
     private lateinit var webView: WebView
     private lateinit var loadingOverlay: View
+    private lateinit var loadingText: TextView
     private lateinit var touchOverlay: View
     private lateinit var statusDot: View
+    private lateinit var statusLabel: TextView
     private lateinit var mjpegPreview: ImageView
     private lateinit var playerView: PlayerView
     private lateinit var layoutIndicator: TextView
     private lateinit var swipeHint: TextView
+    private lateinit var mjpegBadge: TextView
 
     private var exoPlayer: ExoPlayer? = null
     private var rtspConnected = false
@@ -161,9 +165,13 @@ class CinemaActivity : AppCompatActivity() {
     private var answerIntentHandled = false
     private var mjpegOnlyRetryRunnable: Runnable? = null
     private var layoutIndicatorRunnable: Runnable? = null
+    private var loadingTimerRunnable: Runnable? = null
+    private var loadingTimerActive = false
+    private var loadingStartTime = 0L
 
     // V4: Layout cycling via swipe
     private val layoutSizes = arrayOf("single", "2up", "4up", "6up", "8up", "9up")
+    @Volatile private var availableLayouts: List<String>? = null  // populated from server config
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -191,6 +199,7 @@ class CinemaActivity : AppCompatActivity() {
         setupImmersiveMode()
         configureWebView()
         setupTouchOverlay()
+        fetchAvailableLayouts()
 
         // Connect MQTT early — don't wait for onResume() which may be delayed
         // by permission dialogs on fresh install.
@@ -255,14 +264,17 @@ class CinemaActivity : AppCompatActivity() {
     private fun initializeViews() {
         webView = findViewById(R.id.web_view)
         loadingOverlay = findViewById(R.id.loading_overlay)
+        loadingText = findViewById(R.id.loading_text)
         touchOverlay = findViewById(R.id.touch_overlay)
         statusDot = findViewById(R.id.status_dot)
+        statusLabel = findViewById(R.id.status_label)
         mjpegPreview = findViewById(R.id.mjpeg_preview)
         playerView = findViewById(R.id.player_view)
         micFab = findViewById(R.id.mic_fab)
         micFab.visibility = View.VISIBLE
         layoutIndicator = findViewById(R.id.layout_indicator)
         swipeHint = findViewById(R.id.swipe_hint)
+        mjpegBadge = findViewById(R.id.mjpeg_badge)
 
         micFab.setOnClickListener { toggleNativeTalk() }
     }
@@ -310,6 +322,12 @@ class CinemaActivity : AppCompatActivity() {
             // Clear HTTP cache on every fresh start — JS files change on
             // deploy and cache busters alone may not flush in-memory cache.
             clearCache(true)
+
+            // Disable WebView's native long-click (text selection) — the touch
+            // overlay handles long-press (3s → settings) and forwards events to
+            // WebView. Without this, WebView's ~500ms long-click fires first.
+            isLongClickable = false
+            setOnLongClickListener { true }
 
             isFocusable = true
             isFocusableInTouchMode = true
@@ -551,13 +569,57 @@ class CinemaActivity : AppCompatActivity() {
         }
 
         val currentLayout = settingsManager.getDefaultLayout()
-        val currentIdx = layoutSizes.indexOf(currentLayout).coerceAtLeast(0)
+        val cycle = availableLayouts ?: layoutSizes.toList()
+        val currentIdx = cycle.indexOf(currentLayout).coerceAtLeast(0)
         val nextIdx = if (swipeX < 0) {
-            (currentIdx + 1) % layoutSizes.size
+            (currentIdx + 1) % cycle.size
         } else {
-            (currentIdx - 1 + layoutSizes.size) % layoutSizes.size
+            (currentIdx - 1 + cycle.size) % cycle.size
         }
-        switchToLayout(layoutSizes[nextIdx])
+        switchToLayout(cycle[nextIdx])
+    }
+
+    /** Fetch /api/config once to learn which layouts have cameras assigned. */
+    private fun fetchAvailableLayouts() {
+        Thread({
+            try {
+                val serverIp = settingsManager.getServerIp()
+                val adminPort = settingsManager.getAdminPort()
+                val url = java.net.URL("http://$serverIp:$adminPort/api/config")
+                val conn = url.openConnection() as java.net.HttpURLConnection
+                conn.connectTimeout = 5000
+                conn.readTimeout = 5000
+                val json = conn.inputStream.bufferedReader().readText()
+                conn.disconnect()
+
+                val config = JSONObject(json)
+                val layouts = config.optJSONObject("layouts") ?: return@Thread
+                val nonEmpty = mutableListOf<String>()
+                // "single" always available — native video doesn't need WebView layout
+                nonEmpty.add("single")
+                val keys = layouts.keys()
+                while (keys.hasNext()) {
+                    val key = keys.next()
+                    if (key == "single") continue
+                    val arr = layouts.optJSONArray(key)
+                    if (arr != null) {
+                        var hasCamera = false
+                        for (i in 0 until arr.length()) {
+                            if (arr.optString(i, "").isNotEmpty()) { hasCamera = true; break }
+                        }
+                        if (hasCamera) nonEmpty.add(key)
+                    }
+                }
+                // Sort to match layoutSizes order
+                val ordered = layoutSizes.filter { it in nonEmpty }
+                if (ordered.size > 1) {
+                    availableLayouts = ordered
+                    Log.i(TAG, "Available layouts: $ordered")
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "Failed to fetch layouts: ${e.message}")
+            }
+        }, "fetch-layouts").apply { isDaemon = true; start() }
     }
 
     private fun openConfigActivity() {
@@ -687,7 +749,22 @@ class CinemaActivity : AppCompatActivity() {
     private var swipeHintFadeRunnable: Runnable? = null
 
     private fun showSwipeHint() {
+        // Show on first 3 launches so new household members discover the gesture
+        val prefs = getSharedPreferences("ava_doorbell_prefs", MODE_PRIVATE)
+        val launchCount = prefs.getInt("swipe_hint_launches", 0)
+        if (launchCount >= 3) return
+        prefs.edit().putInt("swipe_hint_launches", launchCount + 1).apply()
+
         val handler = Handler(Looper.getMainLooper())
+
+        // On very first launch, also show long-press hint
+        val hintText = if (launchCount == 0) {
+            "\u25C4  Swipe to change layout  \u25BA\nHold 3s for settings"
+        } else {
+            "\u25C4  Swipe to change layout  \u25BA"
+        }
+        swipeHint.text = hintText
+
         swipeHintFadeRunnable = Runnable {
             val fadeOut = AlphaAnimation(1f, 0f).apply {
                 duration = 1000
@@ -825,6 +902,8 @@ class CinemaActivity : AppCompatActivity() {
 
         cancelStallDetection()
         webView.stopLoading()
+        webView.webChromeClient = null
+        webView.webViewClient = WebViewClient()
         parent.removeViewAt(index)
         webView.destroy()
 
@@ -862,6 +941,7 @@ class CinemaActivity : AppCompatActivity() {
         webView.clearCache(true)
         webView.visibility = View.GONE
         hideLoadingOverlay()
+        mjpegBadge.visibility = View.VISIBLE
         startMjpegPreview()
 
         val persisted = settingsManager.getWebViewFailureCount() + 1
@@ -876,6 +956,7 @@ class CinemaActivity : AppCompatActivity() {
             Log.i(TAG, "Retrying WebView after MJPEG-only cooldown")
             mjpegOnlyMode = false
             totalWebViewFailures = 0
+            mjpegBadge.visibility = View.GONE
             webView.visibility = View.VISIBLE
             loadWebViewContent()
         }
@@ -1105,15 +1186,40 @@ class CinemaActivity : AppCompatActivity() {
         val serverIp = settingsManager.getServerIp()
         val defaultCamera = settingsManager.getDefaultCamera()
         // go2rtc snapshot endpoint — slow (decodes on demand), used as MJPEG fallback
-        return "http://$serverIp:$GO2RTC_PORT/api/frame.jpeg?src=${Uri.encode(defaultCamera)}"
+        return "http://$serverIp:$GO2RTC_PORT/api/frame.jpeg?src=${Uri.encode(defaultCamera)}&_t=${System.currentTimeMillis()}"
     }
 
     private fun showLoadingOverlay() {
         loadingOverlay.visibility = View.VISIBLE
+        loadingText.text = "Connecting\u2026"
+        loadingStartTime = System.currentTimeMillis()
+        stopLoadingTimer()
+        loadingTimerActive = true
+        val handler = Handler(Looper.getMainLooper())
+        loadingTimerRunnable = object : Runnable {
+            override fun run() {
+                if (!loadingTimerActive) return
+                val elapsed = (System.currentTimeMillis() - loadingStartTime) / 1000
+                loadingText.text = if (elapsed >= 15) {
+                    "Still connecting \u2014 check network"
+                } else {
+                    "Connecting\u2026 ${elapsed}s"
+                }
+                if (loadingTimerActive) handler.postDelayed(this, 1000)
+            }
+        }
+        handler.postDelayed(loadingTimerRunnable!!, 1000)
     }
 
     private fun hideLoadingOverlay() {
         loadingOverlay.visibility = View.GONE
+        stopLoadingTimer()
+    }
+
+    private fun stopLoadingTimer() {
+        loadingTimerActive = false
+        loadingTimerRunnable?.let { Handler(Looper.getMainLooper()).removeCallbacks(it) }
+        loadingTimerRunnable = null
     }
 
     // =========================================================================
@@ -1124,6 +1230,19 @@ class CinemaActivity : AppCompatActivity() {
         runOnUiThread {
             val color = if (connected) android.graphics.Color.GREEN else android.graphics.Color.RED
             statusDot.backgroundTintList = android.content.res.ColorStateList.valueOf(color)
+            if (!connected) {
+                // Pulse the dot to draw attention on disconnect
+                statusLabel.visibility = View.VISIBLE
+                val pulse = AlphaAnimation(1f, 0.3f).apply {
+                    duration = 500
+                    repeatCount = 5
+                    repeatMode = Animation.REVERSE
+                }
+                statusDot.startAnimation(pulse)
+            } else {
+                statusDot.clearAnimation()
+                statusLabel.visibility = View.GONE
+            }
         }
     }
 
@@ -1369,7 +1488,8 @@ class CinemaActivity : AppCompatActivity() {
             NativeTalkManager.TalkState.ERROR -> {
                 micFab.backgroundTintList = android.content.res.ColorStateList.valueOf(0x80333333.toInt())
                 micFab.alpha = 0.7f
-                Toast.makeText(this, "Mic error — check permissions", Toast.LENGTH_SHORT).show()
+                val reason = nativeTalkManager?.lastErrorMessage ?: "Unknown error"
+                Toast.makeText(this, reason, Toast.LENGTH_LONG).show()
             }
         }
     }
@@ -1534,10 +1654,17 @@ class CinemaActivity : AppCompatActivity() {
         mjpegOnlyRetryRunnable?.let { handler.removeCallbacks(it) }
         mjpegOnlyRetryRunnable = null
         swipeHintShowRunnable?.let { handler.removeCallbacks(it) }
+        swipeHintShowRunnable = null
         swipeHintFadeRunnable?.let { handler.removeCallbacks(it) }
+        swipeHintFadeRunnable = null
+        stopLoadingTimer()
+        layoutIndicatorRunnable?.let { handler.removeCallbacks(it) }
+        layoutIndicatorRunnable = null
         hideMjpegPreview()
         nativeTalkManager?.stopTalk()
         nativeTalkManager = null
+        webView.webChromeClient = null
+        webView.webViewClient = WebViewClient()
         webView.destroy()
         mqttManager.disconnect()
         mediaPlayer?.release()

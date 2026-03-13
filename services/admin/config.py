@@ -50,11 +50,20 @@ def get_current_ip() -> str:
 # ============================================================================
 
 _config_cache: Optional[Dict[str, Any]] = None
+_config_mtime: float = 0.0
 
 
 def load_config() -> Dict[str, Any]:
     """Load configuration, using in-memory cache to avoid disk reads on every request."""
-    global _config_cache
+    global _config_cache, _config_mtime
+    if _config_cache is not None:
+        # Invalidate cache if file was modified externally
+        try:
+            current_mtime = CONFIG_FILE.stat().st_mtime if CONFIG_FILE.exists() else 0.0
+            if current_mtime != _config_mtime:
+                _config_cache = None
+        except OSError:
+            pass
     if _config_cache is not None:
         return _config_cache
 
@@ -62,6 +71,7 @@ def load_config() -> Dict[str, Any]:
         if CONFIG_FILE.exists():
             with open(CONFIG_FILE) as f:
                 _config_cache = json.load(f)
+                _config_mtime = CONFIG_FILE.stat().st_mtime
                 return _config_cache
 
         # Fall back to default config in config dir
@@ -110,6 +120,7 @@ def save_config(config: Dict[str, Any]) -> bool:
 
         os.rename(str(tmp_file), str(CONFIG_FILE))
         _config_cache = config  # Update cache atomically with save
+        _config_mtime = CONFIG_FILE.stat().st_mtime
 
         logger.info("Config saved successfully")
         return True
@@ -193,6 +204,7 @@ def generate_go2rtc_config(config: Dict[str, Any]) -> str:
                 return "unchanged"
 
         GO2RTC_FILE.write_text(new_content)
+        GO2RTC_FILE.chmod(0o600)  # Contains RTSP passwords
         tls_msg = f" (TLS on port {api_tls_port})" if has_tls else " (no TLS)"
         logger.info(f"go2rtc.yaml generated with {len(streams)} streams{tls_msg}")
         return "written"

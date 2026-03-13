@@ -41,8 +41,8 @@ function renderCameras() {
     }
 
     grid.innerHTML = cameras.map(cam => `
-        <div class="camera-card" data-id="${cam.id}">
-            <img class="camera-thumb" src="/api/frame.jpeg?src=${cam.id}&t=${Date.now()}"
+        <div class="camera-card" data-id="${esc(cam.id)}">
+            <img class="camera-thumb" src="/api/frame.jpeg?src=${encodeURIComponent(cam.id)}&t=${Date.now()}"
                  alt="${esc(cam.name)}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
             <div class="camera-thumb-placeholder" style="display:none">No preview</div>
             <div class="camera-header">
@@ -52,12 +52,24 @@ function renderCameras() {
             <div class="camera-info">ID: ${esc(cam.id)}</div>
             <div class="camera-url">${maskPassword(cam.url || '')}</div>
             <div class="camera-actions">
-                <button class="btn btn-sm btn-secondary" onclick="window._editCamera('${cam.id}')">Edit</button>
-                <button class="btn btn-sm btn-secondary" onclick="window._testCamera('${cam.id}')">Test</button>
-                <button class="btn btn-sm btn-danger" onclick="window._deleteCamera('${cam.id}')">Delete</button>
+                <button class="btn btn-sm btn-secondary" data-action="edit" data-cam-id="${esc(cam.id)}">Edit</button>
+                <button class="btn btn-sm btn-secondary" data-action="test" data-cam-id="${esc(cam.id)}">Test</button>
+                <button class="btn btn-sm btn-danger" data-action="delete" data-cam-id="${esc(cam.id)}">Delete</button>
             </div>
         </div>
     `).join('');
+
+    // Event delegation for camera action buttons (avoids inline onclick XSS risk)
+    grid.addEventListener('click', (e) => {
+        const btn = e.target.closest('[data-action]');
+        if (!btn) return;
+        const action = btn.dataset.action;
+        const camId = btn.dataset.camId;
+        if (!camId) return;
+        if (action === 'edit') editCamera(camId);
+        else if (action === 'test') testCamera(camId);
+        else if (action === 'delete') deleteCamera(camId);
+    });
 }
 
 function showAddCameraForm() {
@@ -132,7 +144,7 @@ function showAddCameraForm() {
     });
 }
 
-window._editCamera = async (id) => {
+async function editCamera(id) {
     const cam = cameras.find(c => c.id === id);
     if (!cam) return;
 
@@ -194,9 +206,9 @@ window._editCamera = async (id) => {
             showToast('Error updating camera', 'error');
         }
     });
-};
+}
 
-window._deleteCamera = async (id) => {
+async function deleteCamera(id) {
     const cam = cameras.find(c => c.id === id);
     if (!cam) return;
     if (await showConfirm('Delete Camera', `Delete "${cam.name}"? This cannot be undone.`, { danger: true })) {
@@ -210,9 +222,9 @@ window._deleteCamera = async (id) => {
             showToast('Error deleting camera', 'error');
         }
     }
-};
+}
 
-window._testCamera = async (id) => {
+async function testCamera(id) {
     showToast('Testing stream...', 'info');
     try {
         const resp = await fetchAPI(`/api/cameras/${id}/test`, { method: 'POST' });
@@ -228,7 +240,7 @@ window._testCamera = async (id) => {
     } catch (e) {
         showToast('Stream test error', 'error');
     }
-};
+}
 
 async function addFromNvr() {
     showToast('Scanning NVR...', 'info');

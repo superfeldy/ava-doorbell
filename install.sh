@@ -432,7 +432,11 @@ configure_samba() {
     local smb_pass
     smb_pass="$(openssl rand -base64 12)"
     (echo "$smb_pass"; echo "$smb_pass") | sudo smbpasswd -s -a "${current_user}" 2>/dev/null || true
-    print_success "Samba user configured (password: $smb_pass — save this!)"
+    # Save password to restricted file instead of printing to terminal/logs
+    local pass_file="${CONFIG_DIR}/.smb_pass"
+    echo "$smb_pass" > "$pass_file"
+    chmod 600 "$pass_file"
+    print_success "Samba user configured (password saved to ${pass_file})"
 }
 
 ################################################################################

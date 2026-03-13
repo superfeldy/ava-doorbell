@@ -51,7 +51,7 @@ class DoorbellOverlayService : Service() {
     private var windowManager: WindowManager? = null
     private var overlayView: View? = null
     private val handler = Handler(Looper.getMainLooper())
-    private var previewRunning = false
+    @Volatile private var previewRunning = false
     private var previewThread: Thread? = null
 
     private val trustAllSslFactory: javax.net.ssl.SSLSocketFactory by lazy {
@@ -278,7 +278,33 @@ class DoorbellOverlayService : Service() {
                     }
                 } catch (e: Exception) {
                     errorCount++
-                    if (errorCount > 10) break
+                    if (errorCount > 10) {
+                        handler.post {
+                            if (previewRunning) {
+                                imageView.setImageDrawable(null)
+                                imageView.setBackgroundColor(0xFF1a1a2e.toInt())
+                                // Add "Preview unavailable" text over the image area
+                                val parent = imageView.parent
+                                if (parent is LinearLayout) {
+                                    val idx = parent.indexOfChild(imageView)
+                                    if (idx >= 0) {
+                                        val errorText = TextView(parent.context).apply {
+                                            text = "Preview unavailable"
+                                            setTextColor(0xFF999999.toInt())
+                                            textSize = 13f
+                                            gravity = Gravity.CENTER
+                                            layoutParams = LinearLayout.LayoutParams(
+                                                LinearLayout.LayoutParams.MATCH_PARENT, 240
+                                            )
+                                        }
+                                        parent.removeView(imageView)
+                                        parent.addView(errorText, idx)
+                                    }
+                                }
+                            }
+                        }
+                        break
+                    }
                 }
 
                 try {
@@ -298,7 +324,8 @@ class DoorbellOverlayService : Service() {
         previewRunning = false
         previewThread?.let { thread ->
             thread.interrupt()
-            try { thread.join(500) } catch (_: InterruptedException) {}
+            try { thread.join(2000) } catch (_: InterruptedException) {}
+            if (thread.isAlive) Log.w(TAG, "Preview thread still alive after join(2000)")
         }
         previewThread = null
         removeOverlay()

@@ -9,7 +9,7 @@ import re
 import subprocess
 import time
 from datetime import datetime
-from typing import Dict, Tuple
+from typing import Dict, Tuple, Union
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
@@ -39,13 +39,15 @@ def _get_service_status(service: str) -> Tuple[bool, str]:
         return False, "error"
 
 
-def _restart_service(service: str, skip_if_recent: int = 0) -> bool:
+def _restart_service(service: str, skip_if_recent: int = 0) -> Union[bool, dict]:
     """Restart a systemd service."""
     if skip_if_recent > 0:
         last = _service_last_restart.get(service, 0)
-        if time.time() - last < skip_if_recent:
-            logger.info(f"Skipping {service} restart — already restarted {int(time.time() - last)}s ago")
-            return True
+        elapsed = time.time() - last
+        if elapsed < skip_if_recent:
+            remaining = int(skip_if_recent - elapsed)
+            logger.info(f"Skipping {service} restart — already restarted {int(elapsed)}s ago (cooldown {remaining}s)")
+            return {"cooldown": True, "remaining": remaining}
 
     try:
         result = subprocess.run(
@@ -81,7 +83,10 @@ async def restart_service_endpoint(service: str, user: str = Depends(require_aut
         raise HTTPException(status_code=400, detail=f"Unknown service: {service}")
     # 30s cooldown for go2rtc to prevent rapid restart damage
     skip = 30 if service == "go2rtc" else 10
-    if _restart_service(service, skip_if_recent=skip):
+    result = _restart_service(service, skip_if_recent=skip)
+    if isinstance(result, dict) and result.get("cooldown"):
+        return {"status": "cooldown", "remaining": result["remaining"]}
+    if result:
         return {"status": "restarted"}
     raise HTTPException(status_code=500, detail="Restart failed")
 

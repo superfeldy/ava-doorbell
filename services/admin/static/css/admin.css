@@ -731,6 +731,9 @@ body.admin-body {
     word-break: break-all;
 }
 
+.log-output .log-error { color: #ff8a8a; }
+.log-output .log-warn  { color: var(--warning); }
+
 .form-select-sm {
     background: var(--glass-bg);
     border: var(--border-glass);
@@ -776,6 +779,7 @@ body.admin-body {
     .sidebar.show {
         max-height: 400px;
         padding: 12px 0;
+        overflow-y: auto;
     }
 
     .hamburger-btn {

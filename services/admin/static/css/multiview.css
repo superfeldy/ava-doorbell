@@ -248,7 +248,7 @@ html.multiview, html.multiview body {
 
 .reconnect-overlay .reconnect-text {
     color: rgba(255, 255, 255, 0.6);
-    font-size: 12px;
+    font-size: 14px;
 }
 
 /* ----- Fullscreen ----- */
@@ -522,13 +522,13 @@ html.multiview, html.multiview body {
     }
 
     .control-btn {
-        width: 40px;
-        height: 40px;
+        width: 48px;
+        height: 48px;
     }
 
     .control-btn svg {
-        width: 20px;
-        height: 20px;
+        width: 22px;
+        height: 22px;
     }
 
     #controls {

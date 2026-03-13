@@ -8,6 +8,8 @@
 import { fetchAPI } from './api.js';
 import { showToast } from '../shared/toast.js';
 
+let _settingsClean = true;
+
 export function initSettings() {
     const saveBtn = document.getElementById('saveSettingsBtn');
     if (saveBtn) saveBtn.addEventListener('click', saveSettings);
@@ -18,7 +20,29 @@ export function initSettings() {
     const rerunBtn = document.getElementById('rerunSetupBtn');
     if (rerunBtn) rerunBtn.addEventListener('click', rerunSetup);
 
+    // Track unsaved changes on settings inputs
+    document.querySelectorAll('[id^="setting-"]').forEach(el => {
+        const event = el.type === 'checkbox' ? 'change' : 'input';
+        el.addEventListener(event, markDirty);
+    });
+
     loadSettings();
+}
+
+function markDirty() {
+    if (_settingsClean) {
+        _settingsClean = false;
+        const btn = document.getElementById('saveSettingsBtn');
+        if (btn && !btn.textContent.includes('●')) {
+            btn.textContent = '● Save Settings';
+        }
+    }
+}
+
+function markClean() {
+    _settingsClean = true;
+    const btn = document.getElementById('saveSettingsBtn');
+    if (btn) btn.textContent = 'Save Settings';
 }
 
 async function loadSettings() {
@@ -47,12 +71,17 @@ async function loadSettings() {
         setChecked('setting-autocycle-enabled', config.auto_cycle?.enabled);
         setVal('setting-autocycle-interval', config.auto_cycle?.interval_seconds);
 
+        // After loading values, mark form as clean (don't trigger dirty from programmatic sets)
+        markClean();
     } catch (e) {
         console.error('Failed to load settings:', e);
     }
 }
 
 async function saveSettings() {
+    const btn = document.getElementById('saveSettingsBtn');
+    if (btn) { btn.disabled = true; btn.textContent = 'Saving...'; }
+
     const settings = {
         doorbell_ip: getVal('setting-doorbell-ip'),
         doorbell_username: getVal('setting-doorbell-user'),
@@ -75,6 +104,7 @@ async function saveSettings() {
         });
 
         if (resp.ok) {
+            markClean();
             showToast('Settings saved', 'success');
         } else {
             const data = await resp.json();
@@ -82,6 +112,8 @@ async function saveSettings() {
         }
     } catch (e) {
         showToast('Error saving settings', 'error');
+    } finally {
+        if (btn) { btn.disabled = false; btn.textContent = _settingsClean ? 'Save Settings' : '● Save Settings'; }
     }
 }
 
@@ -98,6 +130,9 @@ async function changePassword() {
         showToast('Passwords do not match', 'error');
         return;
     }
+
+    const btn = document.getElementById('changePasswordBtn');
+    if (btn) { btn.disabled = true; btn.textContent = 'Changing...'; }
 
     try {
         const resp = await fetchAPI('/api/password', {
@@ -117,6 +152,8 @@ async function changePassword() {
         }
     } catch (e) {
         showToast('Error changing password', 'error');
+    } finally {
+        if (btn) { btn.disabled = false; btn.textContent = 'Change Password'; }
     }
 }
 
@@ -126,6 +163,9 @@ async function rerunSetup() {
         showToast('Enter your current password to confirm', 'error');
         return;
     }
+
+    const btn = document.getElementById('rerunSetupBtn');
+    if (btn) { btn.disabled = true; btn.textContent = 'Resetting...'; }
 
     try {
         const resp = await fetchAPI('/api/rerun-setup', {
@@ -142,6 +182,8 @@ async function rerunSetup() {
         }
     } catch (e) {
         showToast('Error re-enabling setup wizard', 'error');
+    } finally {
+        if (btn) { btn.disabled = false; btn.textContent = 'Re-run Setup'; }
     }
 }
 

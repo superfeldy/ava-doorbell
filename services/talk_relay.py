@@ -379,8 +379,9 @@ class DirectRtspBackchannel:
             return False
 
     async def send_audio(self, alaw_data: bytes) -> bool:
-        """Async wrapper for send_audio_sync."""
-        return self.send_audio_sync(alaw_data)
+        """Async wrapper for send_audio_sync — runs in executor to avoid blocking."""
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(None, self.send_audio_sync, alaw_data)
 
     async def close(self) -> None:
         """Tear down RTSP session."""
@@ -464,7 +465,7 @@ class TalkRelayServer:
                         if not await self._open_backchannel(websocket):
                             continue
 
-                    self.backchannel.send_audio_sync(alaw_data)
+                    await self.backchannel.send_audio(alaw_data)
 
         except websockets.exceptions.ConnectionClosed:
             pass

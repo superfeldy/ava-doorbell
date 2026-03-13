@@ -111,7 +111,12 @@ wait_for_url() {
     return 1
 }
 
-log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" >> "$LOG_FILE" 2>/dev/null || true; }
+log() {
+    local line="$*"
+    # Redact credentials before writing to log file
+    line="$(echo "$line" | sed -E 's/(password|pass|token)[=:][^ "]*/\1=***REDACTED***/gi')"
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $line" >> "$LOG_FILE" 2>/dev/null || true
+}
 
 # Build JSON safely using python3 (handles quotes/backslashes in passwords)
 json_kv() {

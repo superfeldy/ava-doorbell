@@ -5,6 +5,7 @@ Login, logout, and API token management.
 """
 
 import logging
+import time
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -49,10 +50,8 @@ async def login(request: Request):
     if auth.verify_password(password, password_hash):
         # Correct password clears rate limit (fat-finger recovery)
         auth.clear_rate_limit(ip)
-        timeout = config.get("admin", {}).get("session_timeout_minutes", 60) * 60
         request.session["user_id"] = "admin"
-        request.session["last_activity"] = __import__("time").time()
-        request.session["_timeout"] = timeout
+        request.session["last_activity"] = time.time()
         logger.info(f"Login successful from {ip}")
         return RedirectResponse("/", status_code=303)
 

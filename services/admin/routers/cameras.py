@@ -74,8 +74,13 @@ async def add_camera(body: CameraCreate, user: str = Depends(require_auth)):
 
     # Auto-generate ID from name
     name_slug = re.sub(r"[^a-z0-9_]", "", body.name.lower().replace(" ", "_"))
-    cam_count = len(config.get("cameras", []))
+    cameras = config.setdefault("cameras", [])
+    cam_count = len(cameras)
     camera_id = f"cam_{name_slug}_{cam_count}"
+    # Avoid ID collision (e.g. after delete + re-add with same name)
+    while any(c.get("id") == camera_id for c in cameras):
+        cam_count += 1
+        camera_id = f"cam_{name_slug}_{cam_count}"
 
     cam_data = body.model_dump()
     cam_data["id"] = camera_id
@@ -118,6 +123,18 @@ async def delete_camera(cam_id: str, user: str = Depends(require_auth)):
     config = config_module.load_config()
     cameras = config.get("cameras", [])
     config["cameras"] = [c for c in cameras if c.get("id") != cam_id]
+
+    # Cascade: remove deleted camera from all layouts and presets
+    for layout_name, slots in config.get("layouts", {}).items():
+        if isinstance(slots, list):
+            for i, slot in enumerate(slots):
+                if slot == cam_id:
+                    slots[i] = ""
+    for preset in config.get("preset_layouts", []):
+        cams = preset.get("cameras", [])
+        for i, c in enumerate(cams):
+            if c == cam_id:
+                cams[i] = ""
 
     config_module.save_config(config)
     config_module.generate_go2rtc_config(config)

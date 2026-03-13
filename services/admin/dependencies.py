@@ -4,8 +4,10 @@ AVA Doorbell v4.0 — FastAPI Dependencies
 Reusable dependency injection functions for route handlers.
 """
 
+from __future__ import annotations
+
 import logging
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from fastapi import Depends, HTTPException, Request
 from fastapi.responses import RedirectResponse
@@ -26,7 +28,7 @@ def get_config() -> Dict[str, Any]:
 
 async def require_auth(
     request: Request,
-    token: HTTPAuthorizationCredentials | None = Depends(_bearer_scheme),
+    token: Optional[HTTPAuthorizationCredentials] = Depends(_bearer_scheme),
 ) -> str:
     """Require authentication via session cookie or Bearer token.
 
@@ -38,6 +40,11 @@ async def require_auth(
     # Check 1: Session cookie (browser)
     session = request.session
     if auth.is_session_valid(session):
+        # CSRF check: state-changing requests from browser sessions must include
+        # X-Requested-With header (blocks cross-origin form POSTs)
+        if request.method in ("POST", "PUT", "DELETE", "PATCH"):
+            if request.headers.get("X-Requested-With") != "XMLHttpRequest":
+                raise HTTPException(status_code=403, detail="Missing CSRF header")
         auth.refresh_session(session)
         return session["user_id"]
 

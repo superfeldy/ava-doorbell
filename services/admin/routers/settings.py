@@ -4,6 +4,7 @@ AVA Doorbell v4.0 — Settings & Layout Routes
 Settings update, password change, layout management.
 """
 
+import copy
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -22,8 +23,21 @@ _PROTECTED_KEYS = {"admin", "version", "setup_complete"}
 
 @router.get("/config/full")
 async def get_full_config(user: str = Depends(require_auth)):
-    """Get full config including passwords (admin only)."""
-    return config_module.load_config()
+    """Get full config with sensitive hashes/passwords redacted."""
+    config = copy.deepcopy(config_module.load_config())
+    # Redact admin secrets
+    admin = config.get("admin", {})
+    if "password_hash" in admin:
+        admin["password_hash"] = "***"
+    if "api_token_hash" in admin:
+        admin["api_token_hash"] = "***"
+    admin.pop("session_secret", None)
+    # Mask doorbell/NVR passwords (show that one exists, but not the value)
+    for section in ("doorbell", "nvr"):
+        s = config.get(section, {})
+        if isinstance(s, dict) and s.get("password"):
+            s["password"] = "***"
+    return config
 
 
 @router.post("/config")
@@ -32,6 +46,13 @@ async def save_config_endpoint(request: Request, user: str = Depends(require_aut
     config = await request.json()
     if not config:
         raise HTTPException(status_code=400, detail="Invalid config")
+
+    # Strip protected keys and warn if client tried to set them
+    attempted = _PROTECTED_KEYS & config.keys()
+    if attempted:
+        logger.warning(f"Client attempted to set protected config keys: {attempted}")
+        for key in attempted:
+            del config[key]
 
     # Preserve existing admin block — never allow client to overwrite auth data
     existing = config_module.load_config()

@@ -39,6 +39,9 @@ const backoffStates = {};
 /** Pending reconnect timers per camera (to cancel on layout switch). */
 const reconnectTimers = {};
 
+/** Countdown interval timers per camera (to cancel on layout switch). */
+const countdownTimers = {};
+
 /**
  * Get the preferred protocol for a camera, respecting expiry.
  */
@@ -225,20 +228,44 @@ function scheduleReconnect(cameraId, cell, state) {
         removeLoadingOverlay(cell);
         updateCameraStatus(cell, 'error');
         showReconnectOverlay(cell, () => {
+            clearAutoRetry(cameraId);
             bs.attempts = 0;
             connectCamera(cameraId, cell, state);
         });
+        // Auto-retry after 60s so wall-mounted tablets don't sit with red overlay
+        reconnectTimers[cameraId] = setTimeout(() => {
+            delete reconnectTimers[cameraId];
+            removeReconnectOverlay(cell);
+            bs.attempts = 0;
+            if (!connectionInProgress[cameraId]) {
+                connectCamera(cameraId, cell, state);
+            }
+        }, 60_000);
         return;
     }
 
     const delay = getDelay(bs);
-    showLoadingOverlay(cell, `Reconnecting in ${Math.round(delay / 1000)}s\u2026`);
+    let remaining = Math.round(delay / 1000);
+    const overlay = showLoadingOverlay(cell, `Reconnecting in ${remaining}s\u2026`);
+
+    // Live countdown
+    clearCountdown(cameraId);
+    countdownTimers[cameraId] = setInterval(() => {
+        remaining--;
+        if (remaining <= 0) {
+            clearCountdown(cameraId);
+            return;
+        }
+        const textEl = overlay?.querySelector('.loading-text');
+        if (textEl) textEl.textContent = `Reconnecting in ${remaining}s\u2026`;
+    }, 1000);
 
     // Cancel any existing reconnect timer for this camera
     if (reconnectTimers[cameraId]) clearTimeout(reconnectTimers[cameraId]);
 
     reconnectTimers[cameraId] = setTimeout(() => {
         delete reconnectTimers[cameraId];
+        clearCountdown(cameraId);
         if (!connectionInProgress[cameraId]) {
             connectCamera(cameraId, cell, state);
         }
@@ -273,6 +300,22 @@ export function disconnectAll(cells) {
     }
 }
 
+/** Clear a countdown interval timer. */
+function clearCountdown(cameraId) {
+    if (countdownTimers[cameraId]) {
+        clearInterval(countdownTimers[cameraId]);
+        delete countdownTimers[cameraId];
+    }
+}
+
+/** Clear auto-retry timer (used when user manually taps reconnect). */
+function clearAutoRetry(cameraId) {
+    if (reconnectTimers[cameraId]) {
+        clearTimeout(reconnectTimers[cameraId]);
+        delete reconnectTimers[cameraId];
+    }
+}
+
 /**
  * Reset backoff state for a camera (used on manual refresh).
  */
@@ -290,6 +333,7 @@ export function resetBackoff(cameraId) {
         clearTimeout(reconnectTimers[cameraId]);
         delete reconnectTimers[cameraId];
     }
+    clearCountdown(cameraId);
 }
 
 /**

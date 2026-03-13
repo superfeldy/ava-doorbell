@@ -35,7 +35,7 @@ class CameraCreate(BaseModel):
 
 class CameraUpdate(BaseModel):
     name: Optional[str] = None
-    url: Optional[str] = None
+    url: Optional[str] = Field(None, pattern=r"^rtsp://")
     main_url: Optional[str] = None
     type: Optional[str] = None
     talk_enabled: Optional[bool] = None

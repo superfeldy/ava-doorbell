@@ -125,6 +125,12 @@ function buildGrid(layoutName) {
     // Show/hide talk button
     setTalkVisible(!!state.talkCamera);
 
+    // Apply current mute state to new video elements
+    for (const cell of Object.values(state.cells)) {
+        const video = cell.querySelector('video');
+        if (video) video.muted = state.muted;
+    }
+
     // Connect all assigned cameras
     for (const [cameraId, cell] of Object.entries(state.cells)) {
         resetBackoff(cameraId);
@@ -136,10 +142,13 @@ function buildGrid(layoutName) {
 // Layout & Preset Switching
 // ============================================================================
 
+const LAYOUT_LABELS = { single: 'Single', '2up': '2-Up', '4up': '4-Up', '6up': '6-Up', '8up': '8-Up', '9up': '9-Up' };
+
 function switchLayout(layoutName) {
     exitFullscreen();  // clear any per-cell fullscreen before switching
     console.log(`Switching to layout: ${layoutName}`);
     buildGrid(layoutName);
+    showMultiviewToast(LAYOUT_LABELS[layoutName] || layoutName);
 }
 
 function switchPreset(presetName) {
@@ -284,6 +293,15 @@ async function init() {
 
     } catch (err) {
         console.error('Multiview init failed:', err);
+        if (viewport) {
+            viewport.innerHTML = `
+                <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:#fff;text-align:center;padding:2em;">
+                    <div style="font-size:1.2em;margin-bottom:1em;">Failed to load multiview</div>
+                    <div style="font-size:0.9em;opacity:0.7;margin-bottom:1.5em;">${escapeHtml(err.message || String(err))}</div>
+                    <button onclick="location.reload()" style="padding:0.5em 1.5em;font-size:1em;border:none;border-radius:4px;background:#2196F3;color:#fff;cursor:pointer;">Retry</button>
+                </div>
+            `;
+        }
     }
 }
 
@@ -320,6 +338,7 @@ window.answerDoorbell = (cameraId) => {
 };
 
 window.addEventListener('message', (event) => {
+    if (event.origin !== window.location.origin) return;
     try {
         const msg = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
         if (msg.action === 'switchCamera') window.switchCamera(msg.cameraId);
@@ -343,4 +362,22 @@ function escapeHtml(str) {
     const div = document.createElement('div');
     div.textContent = str;
     return div.innerHTML;
+}
+
+/**
+ * Show a brief toast notification on the multiview page.
+ *
+ * @param {string} message  Text to display.
+ * @param {'info'|'error'|'success'} type  Visual style (default 'info').
+ * @param {number} duration  Milliseconds before auto-dismiss (default 1500).
+ */
+export function showMultiviewToast(message, type = 'info', duration = 1500) {
+    const toast = document.createElement('div');
+    toast.className = `multiview-toast ${type}`;
+    toast.textContent = message;
+    document.body.appendChild(toast);
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        setTimeout(() => toast.remove(), 300);
+    }, duration);
 }

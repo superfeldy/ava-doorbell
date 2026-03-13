@@ -33,6 +33,17 @@ export async function fetchAPI(url, options = {}) {
     const maxRetries = options._noRetry ? 0 : 2;
     let lastError = null;
 
+    // CSRF protection: add X-Requested-With header to all requests
+    if (!options.headers) options.headers = {};
+    if (typeof options.headers === 'object' && !options.headers['X-Requested-With']) {
+        options.headers['X-Requested-With'] = 'XMLHttpRequest';
+    }
+
+    // Abort after 15s to prevent indefinite hangs
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
+    if (!options.signal) options.signal = controller.signal;
+
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
         try {
             const resp = await fetch(url, options);
@@ -49,17 +60,24 @@ export async function fetchAPI(url, options = {}) {
                 continue;
             }
 
+            clearTimeout(timeoutId);
             setServerReachable(true);
             return resp;
         } catch (err) {
-            lastError = err;
+            // Provide a clearer message for timeout aborts
+            if (err.name === 'AbortError') {
+                lastError = new Error('Request timed out — check your connection to the Pi');
+            } else {
+                lastError = err;
+            }
             if (attempt < maxRetries) {
-                console.warn(`[api] ${url} network error, retrying (${attempt + 1}/${maxRetries}):`, err.message);
+                console.warn(`[api] ${url} network error, retrying (${attempt + 1}/${maxRetries}):`, lastError.message);
                 await sleep(1000 * Math.pow(2, attempt));
             }
         }
     }
 
+    clearTimeout(timeoutId);
     // All retries exhausted
     _consecutiveFailures++;
     setServerReachable(false);

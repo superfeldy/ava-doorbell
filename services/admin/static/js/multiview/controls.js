@@ -10,6 +10,7 @@ const HIDE_DELAY = 3000;
 
 let hideTimer = null;
 let controlsEl = null;
+let initialized = false;
 
 /**
  * Initialize controls bar.
@@ -20,6 +21,8 @@ let controlsEl = null;
 export function initControls(state, callbacks) {
     controlsEl = document.getElementById('controls');
     if (!controlsEl) return;
+    if (initialized) return;
+    initialized = true;
 
     // Show controls initially, then auto-hide
     showControls();
@@ -35,8 +38,17 @@ export function initControls(state, callbacks) {
         layoutBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             const currentIdx = LAYOUT_SIZES.indexOf(state.currentLayout);
-            const nextIdx = (currentIdx + 1) % LAYOUT_SIZES.length;
-            const nextLayout = LAYOUT_SIZES[nextIdx];
+            // Walk forward skipping empty layouts
+            let nextLayout = null;
+            for (let i = 1; i <= LAYOUT_SIZES.length; i++) {
+                const candidate = LAYOUT_SIZES[(currentIdx + i) % LAYOUT_SIZES.length];
+                const cameras = state.layouts[candidate];
+                if (cameras && cameras.filter(Boolean).length > 0) {
+                    nextLayout = candidate;
+                    break;
+                }
+            }
+            if (!nextLayout) return; // all empty — stay on current
             if (typeof callbacks.onLayoutChange === 'function') {
                 callbacks.onLayoutChange(nextLayout);
             }

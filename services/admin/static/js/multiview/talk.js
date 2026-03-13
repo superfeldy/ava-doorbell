@@ -10,6 +10,7 @@
  */
 
 import { setTalkState } from './controls.js?v=4.11';
+import { showMultiviewToast } from './main.js?v=4.11';
 
 const TARGET_SAMPLE_RATE = 8000;
 const BUFFER_SIZE = 2048;
@@ -96,6 +97,15 @@ export async function startTalk(cameraId, wsInfo) {
         console.error('[talk] Start failed:', err);
         stopTalk();
         setTalkState('idle');
+
+        // Show user-facing error toast with specific reason
+        if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+            showMultiviewToast('Microphone access denied', 'error', 3000);
+        } else if (err.message?.includes('WebSocket') || err.message?.includes('connect')) {
+            showMultiviewToast('Talk relay not responding', 'error', 3000);
+        } else {
+            showMultiviewToast('Talk failed: ' + (err.message || 'Unknown error'), 'error', 3000);
+        }
     }
 }
 

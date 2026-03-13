@@ -24,8 +24,19 @@ async function refreshLogs() {
         }
 
         if (data.lines && data.lines.length > 0) {
-            output.textContent = data.lines.join('\n');
-            // Auto-scroll to bottom
+            // Color-code log lines by severity
+            output.innerHTML = '';
+            for (const line of data.lines) {
+                const span = document.createElement('span');
+                span.textContent = line;
+                if (/\b(error|fatal|exception|traceback|panic)\b/i.test(line)) {
+                    span.className = 'log-error';
+                } else if (/\b(warn|warning)\b/i.test(line)) {
+                    span.className = 'log-warn';
+                }
+                output.appendChild(span);
+                output.appendChild(document.createTextNode('\n'));
+            }
             const viewer = document.getElementById('logViewer');
             if (viewer) viewer.scrollTop = viewer.scrollHeight;
         } else {
