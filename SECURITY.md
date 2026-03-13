@@ -24,6 +24,8 @@ If you discover a security vulnerability, please report it responsibly:
 - **Config writes** — atomic (tmp + fsync + rename) to prevent corruption
 - **Command injection** — service management uses a strict whitelist
 - **WebSocket limits** — 64KB max message size to prevent DoS
-- **Protected keys** — admin credentials cannot be modified via REST API
+- **Protected keys** — admin credentials automatically stripped from API writes
+- **Session timeout** — enforced server-side (60 min); clients cannot extend via cookie
+- **Origin validation** — multiview postMessage handler rejects cross-origin commands
 - **MQTT** — anonymous, LAN-only (no internet exposure)
 - **SSL/TLS** — auto-generated certificates for HTTPS companion server

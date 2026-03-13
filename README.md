@@ -213,7 +213,7 @@ Protected keys (`admin`, `version`, `setup_complete`) cannot be modified via the
 ## Security
 
 ### Authentication & Authorization
-- **Admin dashboard**: Session-based auth with configurable timeout (default 60 min)
+- **Admin dashboard**: Session-based auth with server-enforced 60-minute timeout
 - **API access**: Bearer token authentication (generated via dashboard)
 - **Rate limiting**: 5 attempts per 15-minute window per IP; correct password clears lockout
 - **Token storage**: EncryptedSharedPreferences (AES256-GCM) on Android
@@ -231,7 +231,8 @@ Protected keys (`admin`, `version`, `setup_complete`) cannot be modified via the
 - **Tailscale**: Encrypted tunnel for remote access (no port forwarding needed)
 - **SSL/TLS**: Self-signed cert on port 5443, auto-regenerates on IP change
 - **WebSocket**: 64KB max message size to prevent DoS
-- **Protected config keys**: `admin`, `version`, `setup_complete` blocked from API writes
+- **Protected config keys**: `admin`, `version`, `setup_complete` automatically stripped from API writes
+- **Frontend origin validation**: postMessage handler rejects cross-origin commands
 
 ### Restart Protection
 - **go2rtc**: 30-second cooldown between restarts (individual and bulk)
@@ -287,9 +288,9 @@ The relay applies smoothing, noise gate, AGC, and soft limiting before encoding 
 ## MediaTek Compatibility
 
 Devices with MediaTek chipsets have known WebView multiprocess issues (`cr_ChildProcessConn` errors). The app auto-detects MediaTek hardware and:
-- Skips WebView entirely
-- Forces MJPEG-only single-camera mode
-- Blocks multi-view layouts
+- Skips WebView entirely on first load
+- Forces MJPEG-only single-camera mode (with "MJPEG" badge indicator)
+- Allows multi-view MJPEG grids via swipe gesture
 - Uses faster stall detection (8s) and polling (150ms)
 
 ## Development

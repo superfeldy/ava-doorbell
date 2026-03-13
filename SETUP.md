@@ -80,7 +80,7 @@ adb install /path/to/ava-doorbell-v4/apk/ava-doorbell.apk
 
 ### Configure the App
 
-Long-press (3 sec) anywhere on screen to open Settings:
+Long-press (3 sec) anywhere on screen to open Settings. On first 3 launches, a swipe hint and "Hold 3s for settings" tip appear automatically.
 
 | Setting | Value |
 |---------|-------|
@@ -167,7 +167,9 @@ mosquitto_pub -t "doorbell/ring" -m test   # terminal 2: trigger
 | No video in browser | `curl http://localhost:1984/api/streams` — if empty, cameras not configured |
 | No video on Android | Check Server IP + Admin Port in app settings; app falls back to MJPEG on MediaTek |
 | No ring notifications | Check alarm-scanner: `sudo systemctl status alarm-scanner` |
-| Two-way audio broken | Check talk relay: `sudo systemctl status ava-talk`, ensure Talk Port = 5001 |
+| Two-way audio broken | Check talk relay: `sudo systemctl status ava-talk`, ensure Talk Port = 5001. Mic FAB now shows specific error (permission, relay, connection) |
+| Loading stuck on "Connecting..." | After 15s the overlay shows "Still connecting — check network". Verify Pi is reachable and ava-admin is running |
+| "MJPEG" badge on screen | Normal on MediaTek devices — WebView is bypassed, using MJPEG fallback. Auto-retries RTSP every 5 min |
 | SSL warnings | Self-signed cert — click Advanced → Proceed. Regenerates on ava-admin restart if IP changes |
 | Doorbell unreachable | `curl -u admin:PASSWORD http://DOORBELL_IP/cgi-bin/magicBox.cgi?action=getDeviceType` |
 
@@ -270,7 +272,9 @@ http://<PI_IP>:5000/api/logs/download?service=ava-admin&since=1%20hour%20ago
 ### What's Protected
 - **Login**: Rate-limited to 5 wrong attempts per 15 minutes per IP. Correct password always works (clears lockout).
 - **API endpoints**: All management endpoints require session or API token auth. Public endpoints: `/view`, `/api/health`, `/app/download`.
-- **Config keys**: `admin`, `version`, `setup_complete` are blocked from API modification.
+- **Config keys**: `admin`, `version`, `setup_complete` are automatically stripped from API writes (with warning log).
+- **Session timeout**: Enforced server-side (60 min). Clients cannot extend their own session.
+- **Frontend origin validation**: postMessage handler rejects cross-origin commands to prevent camera hijacking.
 - **Camera names**: HTML tags stripped on create/update. IDs are slug-sanitized (alphanumeric + underscore only).
 - **Service restarts**: go2rtc has 30s cooldown, other services 10s cooldown, systemd has crash-loop protection.
 - **Restore endpoint**: Invalid JSON returns 400 (not 500). Existing admin block preserved on restore.

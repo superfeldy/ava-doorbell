@@ -1,5 +1,45 @@
 # Changelog
 
+## [4.3] - 2026-03-13
+
+### Android UX
+- Loading overlay shows elapsed time ("Connecting... 5s") with network warning after 15s
+- Status dot enlarged (14dp) with "MQTT" label, pulses on connection loss
+- Mic FAB shows specific error reasons (permission denied, relay not responding, connection lost)
+- Swipe hint shown on first 3 launches (not just first); includes "Hold 3s for settings" hint
+- MJPEG-only mode badge ("MJPEG" indicator) when WebView is bypassed
+- Overlay preview shows "Preview unavailable" text after 10 failed polling attempts
+- WebView long-click disabled to prevent text selection during gestures
+- Swipe cycling fetches server config and skips layouts with no cameras assigned
+- WebView recreation clears clients to prevent memory leaks
+- Loading timer uses active flag to prevent self-posting loop after dismissal
+- MJPEG frame URLs include cache-buster timestamp
+- Handler callbacks (layout indicator, loading timer, swipe hints) cleaned up in onDestroy
+- AudioRecord validates buffer size before starting recording
+
+### Multiview Web
+- Live countdown timer on reconnect overlay (counts down from delay)
+- Talk button shows specific error toasts (mic denied, relay unreachable)
+- Mute state preserved across layout switches
+- Empty layouts skipped when cycling
+- Double-tap fullscreen debounced (300ms threshold)
+- Fullscreen toggle blocked when reconnect/loading overlay is showing
+- Auto-retry after 60s when max reconnect attempts reached (wall-mounted recovery)
+- Layout name toast on switch ("Single", "2-up", etc.)
+- postMessage handler validates origin to prevent cross-origin hijacking
+- Init failure shows error banner with Retry button (replaces blank screen)
+- Fullscreen and controls init guards prevent duplicate event listeners
+- MSE isTypeSupported wrapped in safety check for older WebViews
+- Fixed querySelector syntax error in countdown timer text update
+
+### Backend
+- Session timeout enforced server-side (constant, not stored in client cookie)
+- Config save endpoint strips protected keys before merge with warning log
+- talk_relay audio send uses run_in_executor to avoid blocking the event loop
+- WebSocket proxy uses async context manager for guaranteed ClientSession cleanup
+- Fixed _restart_service return type hint (bool → Union[bool, dict])
+- Replaced inline __import__("time") with proper module import
+
 ## [4.1] - 2026-03-02
 
 ### Fixed
