@@ -379,9 +379,9 @@ class DirectRtspBackchannel:
             return False
 
     async def send_audio(self, alaw_data: bytes) -> bool:
-        """Async wrapper for send_audio_sync — runs in executor to avoid blocking."""
-        loop = asyncio.get_running_loop()
-        return await loop.run_in_executor(None, self.send_audio_sync, alaw_data)
+        """Thin async wrapper — direct call is safe because a ~336-byte
+        LAN sendall() completes in <0.1 ms and never blocks meaningfully."""
+        return self.send_audio_sync(alaw_data)
 
     async def close(self) -> None:
         """Tear down RTSP session."""
