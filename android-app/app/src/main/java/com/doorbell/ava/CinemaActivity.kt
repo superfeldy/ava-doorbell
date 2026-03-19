@@ -43,6 +43,7 @@ import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import okhttp3.CacheControl
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONObject
@@ -54,6 +55,7 @@ import javax.net.ssl.X509TrustManager
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
+import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.rtsp.RtspMediaSource
 import androidx.media3.ui.PlayerView
@@ -304,6 +306,7 @@ class CinemaActivity : AppCompatActivity() {
                 allowFileAccess = false
                 loadWithOverviewMode = true
                 useWideViewPort = true
+                cacheMode = android.webkit.WebSettings.LOAD_NO_CACHE
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                     safeBrowsingEnabled = false
                 }
@@ -589,6 +592,7 @@ class CinemaActivity : AppCompatActivity() {
                 val conn = url.openConnection() as java.net.HttpURLConnection
                 conn.connectTimeout = 5000
                 conn.readTimeout = 5000
+                conn.useCaches = false
                 val json = conn.inputStream.bufferedReader().readText()
                 conn.disconnect()
 
@@ -987,7 +991,20 @@ class CinemaActivity : AppCompatActivity() {
         val rtspUrl = buildRtspUrl()
         Log.i(TAG, "RTSP URL: $rtspUrl")
 
-        val player = ExoPlayer.Builder(this).build()
+        // Minimal buffering for low-latency live RTSP — keep only enough to
+        // decode the next frame. Default ExoPlayer buffers ~2.5s which adds
+        // visible lag between real-time and on-screen display.
+        val loadControl = DefaultLoadControl.Builder()
+            .setBufferDurationsMs(
+                /* minBufferMs = */ 500,
+                /* maxBufferMs = */ 2000,
+                /* bufferForPlaybackMs = */ 100,
+                /* bufferForPlaybackAfterRebufferMs = */ 500
+            )
+            .build()
+        val player = ExoPlayer.Builder(this)
+            .setLoadControl(loadControl)
+            .build()
         player.setVideoScalingMode(android.media.MediaCodec.VIDEO_SCALING_MODE_SCALE_TO_FIT)
 
         val mediaItem = MediaItem.fromUri(rtspUrl)
@@ -1085,7 +1102,10 @@ class CinemaActivity : AppCompatActivity() {
             while (mjpegRunning) {
                 try {
                     val frameUrl = buildFrameUrl()
-                    val request = Request.Builder().url(frameUrl).build()
+                    val request = Request.Builder()
+                        .url(frameUrl)
+                        .cacheControl(CacheControl.FORCE_NETWORK)
+                        .build()
 
                     mjpegHttpClient.newCall(request).execute().use { response ->
                         val body = response.body

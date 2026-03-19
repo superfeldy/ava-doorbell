@@ -261,6 +261,7 @@ class DoorbellOverlayService : Service() {
                         conn.sslSocketFactory = trustAllSslFactory
                         conn.hostnameVerifier = javax.net.ssl.HostnameVerifier { _, _ -> true }
                     }
+                    conn.useCaches = false
                     conn.connectTimeout = 3000
                     conn.readTimeout = 5000
 
