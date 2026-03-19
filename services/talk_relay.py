@@ -95,7 +95,7 @@ ALAW_SILENCE = 0xD5
 # ---------------------------------------------------------------------------
 # NOTE: Android VOICE_COMMUNICATION + AutomaticGainControl handles mic gain.
 # Server-side gain should be minimal — just gentle leveling, no heavy boost.
-AGC_TARGET = 12000          # target output level
+AGC_TARGET = 16000          # target output level
 AGC_MIN_GAIN = 1            # unity for close-up speech (peaks ~17000)
 AGC_MAX_GAIN = 30           # boost for normal-distance speech (peaks ~300)
 AGC_ATTACK = 0.05           # very fast gain reduction — catches loud transients in 1 chunk
@@ -104,7 +104,7 @@ AGC_RELEASE = 0.90          # fast release — recover gain in ~15 chunks (0.6s)
 NOISE_GATE_THRESHOLD = 30   # gate threshold — let quiet speech tails through
 NOISE_GATE_HOLD_CHUNKS = 12 # longer hold — prevents choppy speech tails
 # Soft limiter: logarithmic compression above SOFT_LIMIT prevents clipping
-SOFT_LIMIT = 12000          # compress above this level
+SOFT_LIMIT = 16000          # compress above this level
 SOFT_CEILING = 28000        # max output after compression (below 32767 hard clip)
 
 
@@ -413,10 +413,10 @@ class TalkRelayServer:
     """WebSocket server for audio relay."""
 
     # Backchannel retry limits
-    _BC_MAX_RETRIES = 5
+    _BC_MAX_RETRIES = 8
     _BC_BACKOFF_BASE = 2.0   # seconds
     _BC_BACKOFF_MAX = 30.0   # seconds
-    _BC_RESET_AT = 3          # attempt go2rtc reset after this many failures
+    _BC_RESET_AT = 1          # attempt go2rtc reset on first 404 failure
 
     def __init__(self, config: Config):
         self.config = config
@@ -551,27 +551,24 @@ class TalkRelayServer:
         go2rtc_api = self.config.go2rtc_api  # e.g. http://127.0.0.1:1984
         stream_name = self.config.doorbell_stream  # e.g. doorbell_direct
 
-        logger.info("Attempting go2rtc stream reset to unstick doorbell backchannel")
+        logger.info("Restarting go2rtc to free doorbell backchannel")
 
         loop = asyncio.get_running_loop()
         try:
-            source_url = await loop.run_in_executor(None, self._go2rtc_reset_sync, go2rtc_api, stream_name)
-            if not source_url:
-                return False
+            # Step 1: restart go2rtc — only way to truly close RTSP TCP session
+            await loop.run_in_executor(None, self._restart_go2rtc_sync)
 
-            # Wait for doorbell RTSP server to release state + go2rtc to reconnect
-            await asyncio.sleep(4)
-
-            # Retry backchannel after reset
+            # Step 2: grab backchannel immediately (go2rtc takes ~2s to reconnect)
             self.backchannel = DirectRtspBackchannel(self.config)
             err = await self.backchannel.connect()
+
             if not err:
-                logger.info("Backchannel recovered after go2rtc reset!")
+                logger.info("Backchannel acquired after go2rtc restart!")
                 self._bc_fail_count = 0
                 self._bc_backoff_until = 0.0
                 return True
 
-            logger.warning(f"Backchannel still failing after go2rtc reset: {err}")
+            logger.warning(f"Backchannel still failing after go2rtc restart: {err}")
             return False
 
         except Exception as e:
@@ -579,54 +576,16 @@ class TalkRelayServer:
             return False
 
     @staticmethod
-    def _go2rtc_reset_sync(go2rtc_api: str, stream_name: str) -> Optional[str]:
-        """Synchronous go2rtc stream disconnect + reconnect. Returns source URL or None."""
-        import urllib.request
-        import urllib.parse
-
+    def _restart_go2rtc_sync() -> None:
+        """Restart go2rtc via systemctl — only reliable way to close RTSP sessions."""
+        import subprocess
         try:
-            # Get current stream sources
-            req = urllib.request.Request(f"{go2rtc_api}/api/streams")
-            with urllib.request.urlopen(req, timeout=5) as resp:
-                streams = json.loads(resp.read())
-
-            stream_info = streams.get(stream_name)
-            if not stream_info:
-                logger.warning(f"Stream '{stream_name}' not found in go2rtc")
-                return None
-
-            # Find the RTSP producer URL
-            source_url = None
-            for p in (stream_info.get("producers") or []):
-                url = p.get("url", "")
-                if url.startswith("rtsp://"):
-                    source_url = url
-                    break
-
-            if not source_url:
-                logger.warning("No RTSP producer found for stream")
-                return None
-
-            params = urllib.parse.urlencode({"dst": stream_name, "src": source_url})
-
-            # DELETE — disconnect go2rtc from doorbell
-            logger.info(f"Disconnecting go2rtc stream '{stream_name}'")
-            req = urllib.request.Request(f"{go2rtc_api}/api/streams?{params}", method="DELETE")
-            with urllib.request.urlopen(req, timeout=5) as resp:
-                pass
-
-            time.sleep(2)
-
-            # PUT — reconnect go2rtc to doorbell
-            logger.info(f"Reconnecting go2rtc stream '{stream_name}'")
-            req = urllib.request.Request(f"{go2rtc_api}/api/streams?{params}", method="PUT")
-            with urllib.request.urlopen(req, timeout=5) as resp:
-                pass
-
-            return source_url
-
+            logger.info("Restarting go2rtc service")
+            subprocess.run(
+                ["sudo", "systemctl", "restart", "go2rtc"],
+                timeout=10, capture_output=True)
         except Exception as e:
-            logger.error(f"go2rtc API call failed: {e}")
+            logger.error(f"go2rtc restart failed: {e}")
             return None
 
     async def _send_status(self, websocket: ServerConnection, status: str, **kwargs) -> None:
