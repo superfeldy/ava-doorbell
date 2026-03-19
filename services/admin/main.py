@@ -76,7 +76,7 @@ def _restart_go2rtc():
 
 app = FastAPI(
     title="AVA Doorbell",
-    version="4.0",
+    version="4.3",
     docs_url=None,  # Disable Swagger UI in production
     redoc_url=None,
     lifespan=lifespan,

@@ -243,7 +243,7 @@ def sanitize_config(config: Dict[str, Any]) -> Dict[str, Any]:
         "preset_layouts": config.get("preset_layouts", []),
         "auto_cycle": config.get("auto_cycle", {}),
         "default_layout": config.get("default_layout", "single"),
-        "version": config.get("version", "4.0"),
+        "version": config.get("version", "4.3"),
     }
 
     for cam in config.get("cameras", []):
