@@ -147,6 +147,23 @@
         android:visibility="gone"
         android:elevation="4dp" />
 
+    <!-- Exit button (top-left, subtle) -->
+    <TextView
+        android:id="@+id/btn_exit"
+        android:layout_width="36dp"
+        android:layout_height="36dp"
+        android:layout_gravity="top|start"
+        android:layout_margin="8dp"
+        android:background="#44000000"
+        android:gravity="center"
+        android:text="✕"
+        android:textColor="#66FFFFFF"
+        android:textSize="18sp"
+        android:visibility="visible"
+        android:elevation="6dp"
+        android:clickable="true"
+        android:focusable="true" />
+
     <!-- Mic toggle FAB for native 2-way audio -->
     <ImageView
         android:id="@+id/mic_fab"

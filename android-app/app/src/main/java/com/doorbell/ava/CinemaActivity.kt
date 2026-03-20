@@ -279,6 +279,15 @@ class CinemaActivity : AppCompatActivity() {
         mjpegBadge = findViewById(R.id.mjpeg_badge)
 
         micFab.setOnClickListener { toggleNativeTalk() }
+
+        findViewById<View>(R.id.btn_exit).setOnClickListener {
+            val homeIntent = Intent(Intent.ACTION_MAIN).apply {
+                addCategory(Intent.CATEGORY_HOME)
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            }
+            startActivity(homeIntent)
+            finishAffinity()
+        }
     }
 
     private fun setupImmersiveMode() {

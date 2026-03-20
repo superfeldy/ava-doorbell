@@ -103,9 +103,6 @@ AGC_RELEASE = 0.90          # fast release — recover gain in ~15 chunks (0.6s)
                             # noise gate masks gain recovery so pumping isn't audible
 NOISE_GATE_THRESHOLD = 30   # gate threshold — let quiet speech tails through
 NOISE_GATE_HOLD_CHUNKS = 12 # longer hold — prevents choppy speech tails
-# Soft limiter: logarithmic compression above SOFT_LIMIT prevents clipping
-SOFT_LIMIT = 24000          # compress above this level
-SOFT_CEILING = 31000        # max output after compression (just below 32767 hard clip)
 
 
 @dataclass
