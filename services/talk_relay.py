@@ -95,17 +95,17 @@ ALAW_SILENCE = 0xD5
 # ---------------------------------------------------------------------------
 # NOTE: Android VOICE_COMMUNICATION + AutomaticGainControl handles mic gain.
 # Server-side gain should be minimal — just gentle leveling, no heavy boost.
-AGC_TARGET = 16000          # target output level
-AGC_MIN_GAIN = 1            # unity for close-up speech (peaks ~17000)
-AGC_MAX_GAIN = 30           # boost for normal-distance speech (peaks ~300)
-AGC_ATTACK = 0.05           # very fast gain reduction — catches loud transients in 1 chunk
+AGC_TARGET = 32000          # target near full-scale — doorbell speaker is very quiet
+AGC_MIN_GAIN = 2            # 2x floor — loud enough without feedback
+AGC_MAX_GAIN = 50           # aggressive boost for arm's-length speech
+AGC_ATTACK = 0.01           # instant gain reduction — kills feedback in 1 chunk
 AGC_RELEASE = 0.90          # fast release — recover gain in ~15 chunks (0.6s)
                             # noise gate masks gain recovery so pumping isn't audible
 NOISE_GATE_THRESHOLD = 30   # gate threshold — let quiet speech tails through
 NOISE_GATE_HOLD_CHUNKS = 12 # longer hold — prevents choppy speech tails
 # Soft limiter: logarithmic compression above SOFT_LIMIT prevents clipping
-SOFT_LIMIT = 16000          # compress above this level
-SOFT_CEILING = 28000        # max output after compression (below 32767 hard clip)
+SOFT_LIMIT = 24000          # compress above this level
+SOFT_CEILING = 31000        # max output after compression (just below 32767 hard clip)
 
 
 @dataclass
@@ -642,34 +642,25 @@ class TalkRelayServer:
                 gain = gain * AGC_RELEASE + ideal_gain * (1 - AGC_RELEASE)
         gain = max(AGC_MIN_GAIN, min(AGC_MAX_GAIN, gain))
         self._agc_gain = gain
-        int_gain = int(gain)
 
         # Diagnostic logging — first 10 chunks + every 50th chunk for speech data
         self._diag_counter += 1
         if self._diag_counter <= 10 or self._diag_counter % 50 == 0:
             rms = int((sum(s*s for s in smoothed) / len(smoothed)) ** 0.5)
-            boosted_peak = min(32767, chunk_peak * int_gain)
+            boosted_peak = min(32767, int(chunk_peak * gain))
             logger.info(
                 f"PCM diag #{self._diag_counter}: "
-                f"peak={chunk_peak}, rms={rms}, gain={int_gain}x, "
+                f"peak={chunk_peak}, rms={rms}, gain={gain:.1f}x, "
                 f"boosted_peak={boosted_peak}, "
                 f"gate={'OPEN' if self._gate_hold > 0 else 'CLOSED'}, "
                 f"first5_raw={raw[:5]}, first5_smooth={smoothed[:5]}"
             )
 
-        # Apply gain + soft limiter + encode to A-law
-        headroom = SOFT_CEILING - SOFT_LIMIT
+        # Apply gain + hard clip + encode to A-law
         alaw = bytearray(n)
         for idx, signed_val in enumerate(smoothed):
-            signed_val *= int_gain
-            # Soft logarithmic limiter: compress signal above SOFT_LIMIT
-            # Maps any level smoothly into SOFT_LIMIT..SOFT_CEILING range
-            abs_val = abs(signed_val)
-            if abs_val > SOFT_LIMIT:
-                excess = abs_val - SOFT_LIMIT
-                compressed = headroom * excess // (excess + headroom)
-                signed_val = (SOFT_LIMIT + compressed) * (1 if signed_val > 0 else -1)
-            # Hard clip safety (shouldn't normally hit)
+            signed_val = int(signed_val * gain)
+            # Hard clip at full scale — doorbell speaker needs maximum level
             if signed_val > 32767:
                 signed_val = 32767
             elif signed_val < -32768:
