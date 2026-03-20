@@ -68,6 +68,7 @@ class ConfigActivity : AppCompatActivity() {
 
     private lateinit var btnSave: Button
     private lateinit var btnCancel: Button
+    private lateinit var btnExitApp: Button
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -112,6 +113,7 @@ class ConfigActivity : AppCompatActivity() {
 
         btnSave = findViewById(R.id.btn_save)
         btnCancel = findViewById(R.id.btn_cancel)
+        btnExitApp = findViewById(R.id.btn_exit_app)
 
         // V4: Layout spinner includes 8up and 9up
         val layouts = arrayOf("single", "2up", "4up", "6up", "8up", "9up")
@@ -131,6 +133,7 @@ class ConfigActivity : AppCompatActivity() {
         btnForceReconnect.setOnClickListener { forceReconnectMqtt() }
         btnSave.setOnClickListener { saveSettings() }
         btnCancel.setOnClickListener { finish() }
+        btnExitApp.setOnClickListener { exitToHomeScreen() }
 
         // Request overlay permission if needed when toggle is enabled
         switchOverlayEnabled.setOnCheckedChangeListener { _, isChecked ->
@@ -344,6 +347,23 @@ class ConfigActivity : AppCompatActivity() {
             .setPositiveButton("Reconnect") { _, _ ->
                 settingsManager.setForceReconnect(true)
                 Toast.makeText(this, "MQTT reconnect queued — return to main screen", Toast.LENGTH_LONG).show()
+            }
+            .setNegativeButton("Cancel") { dialog, _ -> dialog.dismiss() }
+            .show()
+    }
+
+    private fun exitToHomeScreen() {
+        AlertDialog.Builder(this)
+            .setTitle("Exit App")
+            .setMessage("Return to the device home screen?")
+            .setPositiveButton("Exit") { _, _ ->
+                // Go to Android home screen
+                val homeIntent = Intent(Intent.ACTION_MAIN).apply {
+                    addCategory(Intent.CATEGORY_HOME)
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                }
+                startActivity(homeIntent)
+                finishAffinity()
             }
             .setNegativeButton("Cancel") { dialog, _ -> dialog.dismiss() }
             .show()

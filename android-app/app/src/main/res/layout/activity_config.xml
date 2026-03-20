@@ -388,11 +388,23 @@
                 android:id="@+id/btn_cancel"
                 android:layout_width="match_parent"
                 android:layout_height="52dp"
+                android:layout_marginBottom="16dp"
                 android:background="@color/primary"
                 android:text="Cancel"
                 android:textColor="@color/text_primary"
                 android:textSize="16sp"
                 android:textStyle="bold"
+                android:textAllCaps="false"
+                android:gravity="center" />
+
+            <Button
+                android:id="@+id/btn_exit_app"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:background="@color/bg_surface"
+                android:text="Exit to Home Screen"
+                android:textColor="@color/text_muted"
+                android:textSize="14sp"
                 android:textAllCaps="false"
                 android:gravity="center" />
         </LinearLayout>

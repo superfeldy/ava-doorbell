@@ -16,6 +16,7 @@
 - MJPEG frame URLs include cache-buster timestamp
 - Handler callbacks (layout indicator, loading timer, swipe hints) cleaned up in onDestroy
 - AudioRecord validates buffer size before starting recording
+- Exit to Home Screen button in Settings (with confirmation dialog)
 
 ### Multiview Web
 - Live countdown timer on reconnect overlay (counts down from delay)
@@ -39,6 +40,7 @@
 - WebSocket proxy uses async context manager for guaranteed ClientSession cleanup
 - Fixed _restart_service return type hint (bool → Union[bool, dict])
 - Replaced inline __import__("time") with proper module import
+- Talk relay AGC tuned for doorbell speaker: float gain precision, removed soft limiter, fast attack (0.01) for feedback reduction, min gain 2x / max 50x / target 32000
 
 ## [4.1] - 2026-03-02
 
