@@ -285,6 +285,15 @@ Chunk size: 320 samples = 640 bytes PCM16 = 40ms at 8kHz.
 
 The relay applies smoothing, noise gate, AGC, and soft limiting before encoding to G.711A and sending via RTSP backchannel to the doorbell speaker.
 
+## App Controls
+
+| Action | How |
+|--------|-----|
+| Exit app | Tap ✕ (top-left corner) |
+| Open settings | Long-press (3 sec) anywhere |
+| Switch layout | Swipe left/right |
+| Toggle mic | Tap mic button (bottom-right) |
+
 ## MediaTek Compatibility
 
 Devices with MediaTek chipsets have known WebView multiprocess issues (`cr_ChildProcessConn` errors). The app auto-detects MediaTek hardware and:

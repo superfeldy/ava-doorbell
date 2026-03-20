@@ -94,7 +94,7 @@ Long-press (3 sec) anywhere on screen to open Settings. On first 3 launches, a s
 
 Two-way audio: tap the mic FAB (bottom-right) to talk through the doorbell.
 
-To exit the app and return to the device home screen, open Settings and scroll to "Exit to Home Screen".
+To exit the app: tap the ✕ button in the top-left corner of the main screen. Alternatively, open Settings and scroll to "Exit to Home Screen".
 
 ---
 

@@ -16,7 +16,8 @@
 - MJPEG frame URLs include cache-buster timestamp
 - Handler callbacks (layout indicator, loading timer, swipe hints) cleaned up in onDestroy
 - AudioRecord validates buffer size before starting recording
-- Exit to Home Screen button in Settings (with confirmation dialog)
+- Exit button (✕) on main screen top-left corner for quick return to home screen
+- Exit to Home Screen button also available in Settings (with confirmation dialog)
 
 ### Multiview Web
 - Live countdown timer on reconnect overlay (counts down from delay)
