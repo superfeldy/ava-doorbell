@@ -281,11 +281,6 @@ class CinemaActivity : AppCompatActivity() {
         micFab.setOnClickListener { toggleNativeTalk() }
 
         findViewById<View>(R.id.btn_exit).setOnClickListener {
-            val homeIntent = Intent(Intent.ACTION_MAIN).apply {
-                addCategory(Intent.CATEGORY_HOME)
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK
-            }
-            startActivity(homeIntent)
             finishAffinity()
         }
     }
@@ -1000,21 +995,23 @@ class CinemaActivity : AppCompatActivity() {
         val rtspUrl = buildRtspUrl()
         Log.i(TAG, "RTSP URL: $rtspUrl")
 
-        // Minimal buffering for low-latency live RTSP — keep only enough to
-        // decode the next frame. Default ExoPlayer buffers ~2.5s which adds
-        // visible lag between real-time and on-screen display.
+        // Ultra-low-latency buffering for live RTSP — minimize delay between
+        // real-time and on-screen display. Trades smoothness for immediacy.
         val loadControl = DefaultLoadControl.Builder()
             .setBufferDurationsMs(
-                /* minBufferMs = */ 500,
-                /* maxBufferMs = */ 2000,
-                /* bufferForPlaybackMs = */ 100,
-                /* bufferForPlaybackAfterRebufferMs = */ 500
+                /* minBufferMs = */ 100,
+                /* maxBufferMs = */ 500,
+                /* bufferForPlaybackMs = */ 0,
+                /* bufferForPlaybackAfterRebufferMs = */ 100
             )
             .build()
         val player = ExoPlayer.Builder(this)
             .setLoadControl(loadControl)
             .build()
         player.setVideoScalingMode(android.media.MediaCodec.VIDEO_SCALING_MODE_SCALE_TO_FIT)
+
+        // Skip to live edge — don't play buffered-behind content
+        player.setSeekParameters(androidx.media3.exoplayer.SeekParameters.CLOSEST_SYNC)
 
         val mediaItem = MediaItem.fromUri(rtspUrl)
         val rtspSource = RtspMediaSource.Factory()
@@ -1023,7 +1020,7 @@ class CinemaActivity : AppCompatActivity() {
 
         player.setMediaSource(rtspSource)
         player.playWhenReady = true
-        player.volume = 0f  // muted — audio is handled separately
+        player.volume = 1f  // doorbell audio comes via RTSP stream
 
         player.addListener(object : Player.Listener {
             override fun onPlaybackStateChanged(playbackState: Int) {

@@ -602,20 +602,15 @@ class TalkRelayServer:
         if not raw:
             return b''
 
-        # --- 5-tap weighted moving average to smooth high-frequency noise ---
-        # Kernel: [1, 2, 4, 2, 1] / 10  — stronger than 3-tap, removes
-        # sample-to-sample oscillations that sound harsh after A-law encoding.
+        # --- 3-tap weighted moving average — light smoothing only ---
+        # Kernel: [1, 2, 1] / 4  — removes single-sample spikes without
+        # killing high-frequency speech content (consonants at 2-4kHz).
         n = len(raw)
         smoothed = [0] * n
-        # Edge samples: use narrower kernel
-        smoothed[0] = (raw[0] * 4 + raw[1] * 2 + raw[min(2, n-1)]) // 7
-        if n > 1:
-            smoothed[1] = (raw[0] * 2 + raw[1] * 4 + raw[2] * 2 + raw[min(3, n-1)]) // 9
-        for i in range(2, n - 2):
-            smoothed[i] = (raw[i-2] + raw[i-1] * 2 + raw[i] * 4 + raw[i+1] * 2 + raw[i+2]) // 10
-        if n > 2:
-            smoothed[n-2] = (raw[max(0, n-4)] + raw[n-3] * 2 + raw[n-2] * 4 + raw[n-1] * 2) // 9
-        smoothed[n-1] = (raw[max(0, n-3)] + raw[n-2] * 2 + raw[n-1] * 4) // 7
+        smoothed[0] = raw[0]
+        for i in range(1, n - 1):
+            smoothed[i] = (raw[i-1] + raw[i] * 2 + raw[i+1]) >> 2
+        smoothed[n-1] = raw[n-1]
 
         chunk_peak = max(abs(s) for s in smoothed)
 

@@ -357,12 +357,6 @@ class ConfigActivity : AppCompatActivity() {
             .setTitle("Exit App")
             .setMessage("Return to the device home screen?")
             .setPositiveButton("Exit") { _, _ ->
-                // Go to Android home screen
-                val homeIntent = Intent(Intent.ACTION_MAIN).apply {
-                    addCategory(Intent.CATEGORY_HOME)
-                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                }
-                startActivity(homeIntent)
                 finishAffinity()
             }
             .setNegativeButton("Cancel") { dialog, _ -> dialog.dismiss() }
