@@ -211,7 +211,8 @@ class DoorbellOverlayService : Service() {
             WindowManager.LayoutParams.TYPE_PHONE
         }
 
-        var windowFlags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+        // No FLAG_NOT_FOCUSABLE — overlay must receive button clicks
+        var windowFlags = 0
         // FLAG_SHOW_WHEN_LOCKED and FLAG_TURN_SCREEN_ON are deprecated in API 27+.
         // TYPE_APPLICATION_OVERLAY already shows over the lock screen on API 26+.
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O_MR1) {
