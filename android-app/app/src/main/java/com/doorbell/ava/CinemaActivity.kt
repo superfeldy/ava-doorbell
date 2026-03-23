@@ -1663,6 +1663,8 @@ class CinemaActivity : AppCompatActivity() {
             startNativeVideo()
         }
 
+        exoPlayer?.playWhenReady = true  // resume audio/video when foregrounded
+
         setupImmersiveMode()
         handleAnswerIntent(intent)
         idleManager.start()
@@ -1671,6 +1673,7 @@ class CinemaActivity : AppCompatActivity() {
     override fun onPause() {
         super.onPause()
         webView.onPause()
+        exoPlayer?.playWhenReady = false  // stop audio/video in background
         idleManager.stop()
     }
 
