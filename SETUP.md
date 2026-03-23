@@ -96,6 +96,11 @@ Two-way audio: tap the mic FAB (bottom-right) to talk through the doorbell.
 
 To exit the app: tap the ✕ button in the top-left corner of the main screen. Alternatively, open Settings and scroll to "Exit to Home Screen".
 
+The app auto-launches on device boot and can be set as the default home launcher:
+```bash
+adb shell cmd package set-home-activity com.doorbell.ava/.CinemaActivity
+```
+
 ---
 
 ## Network Reference

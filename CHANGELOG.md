@@ -18,6 +18,7 @@
 - AudioRecord validates buffer size before starting recording
 - Exit button (✕) on main screen top-left corner for quick return to home screen
 - Exit to Home Screen button also available in Settings (with confirmation dialog)
+- Auto-start on boot via BOOT_COMPLETED receiver (dedicated kiosk hardware)
 
 ### Multiview Web
 - Live countdown timer on reconnect overlay (counts down from delay)
