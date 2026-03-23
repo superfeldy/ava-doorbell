@@ -70,15 +70,34 @@ class MqttService : Service() {
     }
 
     private fun onRing() {
-        Log.i(TAG, "=== RING received in MqttService — launching CinemaActivity ===")
+        Log.i(TAG, "=== RING received in MqttService — showing overlay ===")
         playChime()
         vibrate()
 
-        val launch = Intent(this, CinemaActivity::class.java).apply {
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
-            putExtra("ring_event", true)
+        // Show the doorbell overlay popup (Answer / Dismiss).
+        // CinemaActivity launches only when the user taps Answer.
+        val settings = SettingsManager(this)
+        val overlayIntent = Intent(this, DoorbellOverlayService::class.java).apply {
+            putExtra("server_ip", settings.getServerIp())
+            putExtra("admin_port", settings.getAdminPort())
+            putExtra("camera_id", settings.getDefaultCamera())
+            putExtra("https_enabled", false)
         }
-        startActivity(launch)
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                startForegroundService(overlayIntent)
+            } else {
+                startService(overlayIntent)
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Cannot start overlay from service: ${e.message}")
+            // Fallback: launch activity directly
+            val launch = Intent(this, CinemaActivity::class.java).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                putExtra("ring_event", true)
+            }
+            startActivity(launch)
+        }
     }
 
     private fun playChime() {
