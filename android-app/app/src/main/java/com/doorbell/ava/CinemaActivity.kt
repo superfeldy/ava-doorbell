@@ -203,8 +203,10 @@ class CinemaActivity : AppCompatActivity() {
         setupTouchOverlay()
         fetchAvailableLayouts()
 
-        // Connect MQTT early — don't wait for onResume() which may be delayed
-        // by permission dialogs on fresh install.
+        // Start persistent MQTT service (survives activity destroy)
+        MqttService.start(this)
+
+        // Activity also connects its own MQTT for UI updates (status dot, motion)
         mqttManager.connect(
             serverIp = settingsManager.getServerIp(),
             port = settingsManager.getMqttPort()

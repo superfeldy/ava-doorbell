@@ -68,6 +68,12 @@
             android:exported="false"
             android:foregroundServiceType="mediaPlayback" />
 
+        <!-- Persistent MQTT service — monitors doorbell events even when activity is closed -->
+        <service
+            android:name=".MqttService"
+            android:exported="false"
+            android:foregroundServiceType="mediaPlayback" />
+
         <!-- Auto-start on boot -->
         <receiver
             android:name=".BootReceiver"

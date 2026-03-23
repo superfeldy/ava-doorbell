@@ -6,13 +6,14 @@ import android.content.Intent
 import android.util.Log
 
 /**
- * Launches CinemaActivity automatically when the device boots.
- * Ensures the Cinema Remote app is always running on the dedicated hardware.
+ * On boot: starts MqttService (persistent doorbell monitoring) and
+ * launches CinemaActivity (camera view).
  */
 class BootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action == Intent.ACTION_BOOT_COMPLETED) {
-            Log.i("BootReceiver", "Boot completed — launching CinemaActivity")
+            Log.i("BootReceiver", "Boot completed — starting MqttService + CinemaActivity")
+            MqttService.start(context)
             val launch = Intent(context, CinemaActivity::class.java).apply {
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             }
