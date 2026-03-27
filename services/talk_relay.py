@@ -103,6 +103,7 @@ AGC_RELEASE = 0.90          # fast release — recover gain in ~15 chunks (0.6s)
                             # noise gate masks gain recovery so pumping isn't audible
 NOISE_GATE_THRESHOLD = 30   # gate threshold — let quiet speech tails through
 NOISE_GATE_HOLD_CHUNKS = 12 # longer hold — prevents choppy speech tails
+GATE_RAMP_SAMPLES = 40      # 5ms fade-in/out at gate edges — prevents speaker clicks
 
 
 @dataclass
@@ -343,7 +344,7 @@ class DirectRtspBackchannel:
         logger.info("Direct RTSP backchannel ready — sending audio")
         return self.ERR_NONE
 
-    def send_audio_sync(self, alaw_data: bytes) -> bool:
+    def send_audio_sync(self, alaw_data: bytes, marker: bool = False) -> bool:
         """Send A-law audio as RTP over TCP interleaved (synchronous, non-blocking)."""
         if not self.connected or not self._sock:
             return False
@@ -351,7 +352,7 @@ class DirectRtspBackchannel:
             # Build RTP packet: PT=8 (PCMA), 8000 Hz clock
             rtp = bytearray(12 + len(alaw_data))
             rtp[0] = 0x80  # V=2, no padding, no extension, no CSRC
-            rtp[1] = 8     # PT=8 (PCMA), no marker
+            rtp[1] = (0x80 if marker else 0x00) | 8  # marker bit + PT=8 (PCMA)
             struct.pack_into('>H', rtp, 2, self._rtp_seq & 0xFFFF)
             struct.pack_into('>I', rtp, 4, self._rtp_ts & 0xFFFFFFFF)
             struct.pack_into('>I', rtp, 8, self._rtp_ssrc)
@@ -375,10 +376,10 @@ class DirectRtspBackchannel:
             self.connected = False
             return False
 
-    async def send_audio(self, alaw_data: bytes) -> bool:
+    async def send_audio(self, alaw_data: bytes, marker: bool = False) -> bool:
         """Thin async wrapper — direct call is safe because a ~336-byte
         LAN sendall() completes in <0.1 ms and never blocks meaningfully."""
-        return self.send_audio_sync(alaw_data)
+        return self.send_audio_sync(alaw_data, marker=marker)
 
     async def close(self) -> None:
         """Tear down RTSP session."""
@@ -424,6 +425,8 @@ class TalkRelayServer:
         self._diag_counter = 0
         self._agc_gain = float(AGC_MAX_GAIN)
         self._gate_hold = 0  # chunks remaining before gate closes
+        self._gate_was_closed = True  # track gate transitions for fade-in + marker bit
+        self._rtp_marker_pending = True  # set marker bit on first RTP packet of talkburst
         # Backchannel retry state
         self._bc_fail_count = 0
         self._bc_backoff_until = 0.0
@@ -462,7 +465,11 @@ class TalkRelayServer:
                         if not await self._open_backchannel(websocket):
                             continue
 
-                    await self.backchannel.send_audio(alaw_data)
+                    # Set RTP marker bit on first packet of a talkburst
+                    marker = self._rtp_marker_pending
+                    if marker:
+                        self._rtp_marker_pending = False
+                    await self.backchannel.send_audio(alaw_data, marker=marker)
 
         except websockets.exceptions.ConnectionClosed:
             pass
@@ -621,7 +628,17 @@ class TalkRelayServer:
             self._gate_hold -= 1
         else:
             # Gate closed — return silence
+            self._gate_was_closed = True
+            self._rtp_marker_pending = True
             return bytes([ALAW_SILENCE] * n)
+
+        # Gate just opened after silence — cap gain to prevent loud first-chunk burst.
+        # During silence the release ramp pushes gain toward AGC_MAX_GAIN; without
+        # this cap the first speech chunk gets 50x boost before attack corrects it.
+        gate_just_opened = self._gate_was_closed
+        if gate_just_opened:
+            self._agc_gain = min(self._agc_gain, AGC_MIN_GAIN * 4)
+            self._gate_was_closed = False
 
         # AGC — modest gain, slow dynamics to avoid pumping artifacts
         gain = self._agc_gain
@@ -648,10 +665,14 @@ class TalkRelayServer:
                 f"first5_raw={raw[:5]}, first5_smooth={smoothed[:5]}"
             )
 
-        # Apply gain + hard clip + encode to A-law
+        # Apply gain + gate fade-in + hard clip + encode to A-law
         alaw = bytearray(n)
+        ramp_len = min(GATE_RAMP_SAMPLES, n) if gate_just_opened else 0
         for idx, signed_val in enumerate(smoothed):
             signed_val = int(signed_val * gain)
+            # Fade-in ramp on gate open — prevents speaker click
+            if idx < ramp_len:
+                signed_val = signed_val * idx // ramp_len
             # Hard clip at full scale — doorbell speaker needs maximum level
             if signed_val > 32767:
                 signed_val = 32767
