@@ -81,6 +81,9 @@ class DoorbellOverlayService : Service() {
             return START_NOT_STICKY
         }
 
+        // Cancel any pending auto-dismiss from a previous ring event
+        handler.removeCallbacksAndMessages(null)
+
         // Remove existing overlay if shown
         removeOverlay()
 
@@ -95,7 +98,7 @@ class DoorbellOverlayService : Service() {
 
         showOverlay(serverIp, adminPort, cameraId, httpsEnabled)
 
-        // Auto-dismiss after 30s
+        // Auto-dismiss after 30s (resets on each new ring)
         handler.postDelayed({ dismissOverlay() }, AUTO_DISMISS_MS)
 
         return START_NOT_STICKY
