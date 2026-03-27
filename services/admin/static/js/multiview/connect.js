@@ -39,6 +39,10 @@ const backoffStates = {};
 /** Pending reconnect timers per camera (to cancel on layout switch). */
 const reconnectTimers = {};
 
+/** Generation counter per camera — incremented on each connectCamera call.
+ *  Used to detect stale connections from rapid layout switches. */
+const connectionGeneration = {};
+
 /** Countdown interval timers per camera (to cancel on layout switch). */
 const countdownTimers = {};
 
@@ -77,6 +81,12 @@ export async function connectCamera(cameraId, cell, state) {
         return;
     }
     connectionInProgress[cameraId] = true;
+
+    // Increment generation — used to detect stale connections from rapid layout switches.
+    // If another connectCamera call starts for the same camera before this one finishes,
+    // the generation will be higher and we'll clean up the stale result.
+    const gen = (connectionGeneration[cameraId] || 0) + 1;
+    connectionGeneration[cameraId] = gen;
 
     // Ensure backoff state exists
     if (!backoffStates[cameraId]) {
@@ -124,65 +134,88 @@ export async function connectCamera(cameraId, cell, state) {
     const preferred = getPreferredProtocol(cameraId);
     const protocols = buildProtocolOrder(preferred);
 
+    /** Check if this connection attempt is still current (not superseded by a newer one). */
+    function isStale() {
+        return connectionGeneration[cameraId] !== gen;
+    }
+
     let connected = false;
 
     for (const protocol of protocols) {
-        if (connected) break;
+        if (connected || isStale()) break;
 
         try {
             if (protocol === 'webrtc') {
                 const result = await tryWebRTC(cameraId, videoEl, state.wsInfo, {
                     muted: state.muted,
                     onConnected: () => {
+                        if (isStale()) return;
                         removeLoadingOverlay(cell);
                         if (imgEl) stopMjpegPreview(cameraId, imgEl);
                         setPreferredProtocol(cameraId, 'webrtc');
                         recordSuccess(backoffStates[cameraId]);
                         updateCameraStatus(cell, 'live');
-                        // Defer frozen frame removal until video has a painted frame
                         deferFrozenFrameRemoval(cell, videoEl);
                     },
                     onFailed: (reason) => {
+                        if (isStale()) return;
                         console.warn(`[${cameraId}] WebRTC failed after connection: ${reason}`);
                         scheduleReconnect(cameraId, cell, state);
                     },
                     onDisconnected: () => {
+                        if (isStale()) return;
                         scheduleReconnect(cameraId, cell, state);
                     },
                     updateStatus: (id, s) => {
+                        if (isStale()) return;
                         if (s === 'connecting' || s === 'checking') {
                             updateCameraStatus(cell, 'connecting');
                         }
                     },
                 });
+                // If a newer connection attempt started while we were awaiting,
+                // clean up this stale result instead of storing it.
+                if (isStale()) {
+                    console.log(`[${cameraId}] Discarding stale WebRTC connection (gen ${gen} < ${connectionGeneration[cameraId]})`);
+                    cleanupWebRTC(result);
+                    break;
+                }
                 activeConnections[cameraId] = { type: 'webrtc', ...result };
                 connected = true;
             } else if (protocol === 'mse') {
                 const result = await tryMSE(cameraId, videoEl, state.wsInfo, {
                     muted: state.muted,
                     onConnected: () => {
+                        if (isStale()) return;
                         removeLoadingOverlay(cell);
                         if (imgEl) stopMjpegPreview(cameraId, imgEl);
                         setPreferredProtocol(cameraId, 'mse');
                         recordSuccess(backoffStates[cameraId]);
                         updateCameraStatus(cell, 'live');
-                        // Defer frozen frame removal until video has a painted frame
                         deferFrozenFrameRemoval(cell, videoEl);
                     },
                     onFailed: (reason) => {
+                        if (isStale()) return;
                         console.warn(`[${cameraId}] MSE failed: ${reason}`);
                         scheduleReconnect(cameraId, cell, state);
                     },
                 });
+                if (isStale()) {
+                    console.log(`[${cameraId}] Discarding stale MSE connection (gen ${gen} < ${connectionGeneration[cameraId]})`);
+                    cleanupMSE(result);
+                    break;
+                }
                 activeConnections[cameraId] = { type: 'mse', ...result };
                 connected = true;
             }
         } catch (err) {
-            console.warn(`[${cameraId}] ${protocol} failed: ${err.message}`);
+            if (!isStale()) {
+                console.warn(`[${cameraId}] ${protocol} failed: ${err.message}`);
+            }
         }
     }
 
-    if (!connected) {
+    if (!connected && !isStale()) {
         // All protocols failed — fall back to MJPEG-only
         console.warn(`[${cameraId}] All protocols failed, using MJPEG fallback`);
         removeLoadingOverlay(cell);
