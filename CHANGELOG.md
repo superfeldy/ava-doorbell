@@ -7,6 +7,11 @@
 - Connection generation counter prevents resource leaks during rapid layout switches — stale WebRTC/MSE connections are detected and cleaned up immediately
 - Cache busters bumped to v4.12 across all JS/CSS imports and HTML template
 
+### Talk Relay DSP
+- Gate fade-in ramp (5ms / 40 samples) on silence→speech transitions prevents speaker clicks
+- AGC gain capped to 8x on gate-open (was uncapped at up to 50x, causing loud first-chunk pop after silence)
+- RTP marker bit set on first packet after silence (RFC 3551 talkburst signaling)
+
 ### Android
 - Doorbell overlay wakes screen via SCREEN_BRIGHT_WAKE_LOCK with ACQUIRE_CAUSES_WAKEUP (was no-op on API 27+ due to deprecated FLAG_TURN_SCREEN_ON)
 - Overlay auto-dismiss timer resets correctly on rapid ring events (was race where earliest callback killed the service prematurely)
