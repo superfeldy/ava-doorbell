@@ -1,5 +1,16 @@
 # Changelog
 
+## [4.4] - 2026-03-27
+
+### Streaming
+- Default protocol order changed to WebRTC-first (was MSE-first) — eliminates 15s MSE timeout delay, connections now under 1s
+- Connection generation counter prevents resource leaks during rapid layout switches — stale WebRTC/MSE connections are detected and cleaned up immediately
+- Cache busters bumped to v4.12 across all JS/CSS imports and HTML template
+
+### Android
+- Doorbell overlay wakes screen via SCREEN_BRIGHT_WAKE_LOCK with ACQUIRE_CAUSES_WAKEUP (was no-op on API 27+ due to deprecated FLAG_TURN_SCREEN_ON)
+- Overlay auto-dismiss timer resets correctly on rapid ring events (was race where earliest callback killed the service prematurely)
+
 ## [4.3] - 2026-03-13
 
 ### Android UX

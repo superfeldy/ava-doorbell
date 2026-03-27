@@ -76,6 +76,8 @@ graph TD
     D -. "fallback" .-> E["MJPEG polling"]
 ```
 
+Protocol cascade: **WebRTC** (lowest latency) → **MSE** (fallback) → **MJPEG** (universal fallback). Successful protocol is cached per camera for 10 minutes.
+
 ### Audio Pipeline (Two-Way Talk)
 
 ```mermaid
