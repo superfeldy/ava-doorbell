@@ -11,6 +11,7 @@ import android.os.Build
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
+import android.os.PowerManager
 import android.provider.Settings
 import android.util.Log
 import android.view.Gravity
@@ -53,6 +54,7 @@ class DoorbellOverlayService : Service() {
     private val handler = Handler(Looper.getMainLooper())
     @Volatile private var previewRunning = false
     private var previewThread: Thread? = null
+    private var wakeLock: PowerManager.WakeLock? = null
 
     private val trustAllSslFactory: javax.net.ssl.SSLSocketFactory by lazy {
         val trustAll = arrayOf<TrustManager>(object : X509TrustManager {
@@ -97,6 +99,9 @@ class DoorbellOverlayService : Service() {
         val httpsEnabled = intent?.getBooleanExtra("https_enabled", false) ?: false
 
         showOverlay(serverIp, adminPort, cameraId, httpsEnabled)
+
+        // Wake the screen so the overlay is visible on a sleeping tablet
+        wakeScreen()
 
         // Auto-dismiss after 30s (resets on each new ring)
         handler.postDelayed({ dismissOverlay() }, AUTO_DISMISS_MS)
@@ -324,8 +329,30 @@ class DoorbellOverlayService : Service() {
         }.also { previewThread = it }
     }
 
+    @Suppress("DEPRECATION")
+    private fun wakeScreen() {
+        releaseWakeLock()
+        val pm = getSystemService(POWER_SERVICE) as PowerManager
+        wakeLock = pm.newWakeLock(
+            PowerManager.SCREEN_BRIGHT_WAKE_LOCK or PowerManager.ACQUIRE_CAUSES_WAKEUP,
+            "ava:doorbell_ring"
+        ).apply {
+            // Hold for the overlay duration; released on dismiss or auto-dismiss
+            acquire(AUTO_DISMISS_MS + 1000)
+        }
+        Log.i(TAG, "Screen wake lock acquired")
+    }
+
+    private fun releaseWakeLock() {
+        wakeLock?.let {
+            if (it.isHeld) it.release()
+            wakeLock = null
+        }
+    }
+
     private fun dismissOverlay() {
         handler.removeCallbacksAndMessages(null)
+        releaseWakeLock()
         previewRunning = false
         previewThread?.let { thread ->
             thread.interrupt()
@@ -378,6 +405,7 @@ class DoorbellOverlayService : Service() {
     override fun onDestroy() {
         super.onDestroy()
         previewRunning = false
+        releaseWakeLock()
         removeOverlay()
         handler.removeCallbacksAndMessages(null)
     }
