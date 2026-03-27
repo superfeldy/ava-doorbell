@@ -9,10 +9,10 @@
  * Just MJPEG <img> elements pointed at go2rtc's stream endpoint.
  */
 
-import { startMjpegPreview, stopAllMjpeg } from './mjpeg.js?v=4.11';
-import { initControls, setTalkVisible, getLayoutSizes } from './controls.js?v=4.11';
-import { initFullscreen, exitFullscreen } from './fullscreen.js?v=4.11';
-import { captureImgElement } from './reconnect.js?v=4.11';
+import { startMjpegPreview, stopAllMjpeg } from './mjpeg.js?v=4.12';
+import { initControls, setTalkVisible, getLayoutSizes } from './controls.js?v=4.12';
+import { initFullscreen, exitFullscreen } from './fullscreen.js?v=4.12';
+import { captureImgElement } from './reconnect.js?v=4.12';
 
 console.log('MJPEG-only mode: MSE/WebRTC disabled (server-side template)');
 

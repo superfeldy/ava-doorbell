@@ -170,11 +170,24 @@ export function tryWebRTC(cameraId, videoEl, wsInfo, config) {
                 }
 
                 if (msg.type === 'webrtc') {
-                    // SDP answer from go2rtc
-                    console.log(`[${cameraId}] WebRTC: received SDP answer (${msg.value.length} bytes)`);
+                    // SDP answer from go2rtc — value may be a string (SDP) or object {type, sdp}
+                    const answerValue = msg.value;
+                    console.log(`[${cameraId}] WebRTC: received SDP answer (type=${typeof answerValue})`);
                     try {
+                        let answer;
+                        if (typeof answerValue === 'string') {
+                            // Legacy: value is raw SDP string
+                            try {
+                                answer = JSON.parse(answerValue);
+                            } catch {
+                                answer = { type: 'answer', sdp: answerValue };
+                            }
+                        } else {
+                            // v1.9+: value is already an object {type, sdp}
+                            answer = answerValue;
+                        }
                         await peer.setRemoteDescription(
-                            new RTCSessionDescription({ type: 'answer', sdp: msg.value })
+                            new RTCSessionDescription(answer)
                         );
                     } catch (e) {
                         console.error(`[${cameraId}] WebRTC: setRemoteDescription failed:`, e);
@@ -211,10 +224,14 @@ export function tryWebRTC(cameraId, videoEl, wsInfo, config) {
 
                     // Send the offer immediately — don't wait for ICE gathering.
                     // go2rtc handles trickle ICE via webrtc/candidate messages.
+                    // go2rtc v1.9+ expects value to be an object {type, sdp}, not a string.
                     console.log(`[${cameraId}] WebRTC: sending SDP offer`);
                     ws.send(JSON.stringify({
                         type: 'webrtc',
-                        value: peer.localDescription.sdp,
+                        value: {
+                            type: peer.localDescription.type,
+                            sdp: peer.localDescription.sdp,
+                        },
                     }));
                 } catch (e) {
                     console.error(`[${cameraId}] WebRTC: offer creation failed:`, e);

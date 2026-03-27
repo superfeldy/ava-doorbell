@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
     <title>AVA Doorbell - Live View</title>
-    <link rel="stylesheet" href="/static/css/common.css?v=4.11">
-    <link rel="stylesheet" href="/static/css/multiview.css?v=4.11">
+    <link rel="stylesheet" href="/static/css/common.css?v=4.12">
+    <link rel="stylesheet" href="/static/css/multiview.css?v=4.12">
 </head>
 <body>
     <div id="viewport"></div>
@@ -40,9 +40,9 @@
 
     {% if mode == "mjpeg" %}
     {# Android WebView / MediaTek: skip MSE/WebRTC entirely to avoid MediaCodec crashes #}
-    <script type="module" src="/static/js/multiview/main-mjpeg.js?v=4.11"></script>
+    <script type="module" src="/static/js/multiview/main-mjpeg.js?v=4.12"></script>
     {% else %}
-    <script type="module" src="/static/js/multiview/main.js?v=4.11"></script>
+    <script type="module" src="/static/js/multiview/main.js?v=4.12"></script>
     {% endif %}
 </body>
 </html>

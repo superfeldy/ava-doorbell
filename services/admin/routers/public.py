@@ -110,9 +110,12 @@ async def ws_info():
     cert_file = config_module.CONFIG_DIR / "ssl" / "ava-admin.crt"
     tls_available = cert_file.exists()
 
+    # Return empty ws_base so the frontend uses the same-origin /api/ws-proxy
+    # instead of connecting directly to go2rtc (cross-origin WebSocket fails in
+    # browsers and bypasses the admin auth layer).
     return {
-        "ws_base": f"ws://{pi_ip}:{go2rtc_port}",
-        "wss_base": f"wss://{pi_ip}:{go2rtc_tls_port}" if tls_available else None,
+        "ws_base": "",
+        "wss_base": "",
         "http_base": f"http://{pi_ip}:{go2rtc_port}",
         "https_base": f"https://{pi_ip}:{go2rtc_tls_port}" if tls_available else None,
         "tls_available": tls_available,

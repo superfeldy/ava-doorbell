@@ -6,12 +6,12 @@
  * and exposes WebView bridge APIs for Android.
  */
 
-import { connectCamera, cleanupConnection, disconnectAll, resetBackoff } from './connect.js?v=4.11';
-import { stopAllMjpeg } from './mjpeg.js?v=4.11';
-import { initControls, setTalkVisible, getLayoutSizes } from './controls.js?v=4.11';
-import { startTalk, stopTalk } from './talk.js?v=4.11';
-import { initFullscreen, exitFullscreen } from './fullscreen.js?v=4.11';
-import { captureVideoFrame, captureImgElement } from './reconnect.js?v=4.11';
+import { connectCamera, cleanupConnection, disconnectAll, resetBackoff } from './connect.js?v=4.12';
+import { stopAllMjpeg } from './mjpeg.js?v=4.12';
+import { initControls, setTalkVisible, getLayoutSizes } from './controls.js?v=4.12';
+import { startTalk, stopTalk } from './talk.js?v=4.12';
+import { initFullscreen, exitFullscreen } from './fullscreen.js?v=4.12';
+import { captureVideoFrame, captureImgElement } from './reconnect.js?v=4.12';
 
 // ============================================================================
 // Global State

@@ -6,16 +6,16 @@
  * concurrent cascade attempts via connectionInProgress flags.
  */
 
-import { tryWebRTC, cleanupWebRTC } from './webrtc.js?v=4.11';
-import { tryMSE, cleanupMSE } from './mse.js?v=4.11';
-import { startMjpegPreview, stopMjpegPreview } from './mjpeg.js?v=4.11';
+import { tryWebRTC, cleanupWebRTC } from './webrtc.js?v=4.12';
+import { tryMSE, cleanupMSE } from './mse.js?v=4.12';
+import { startMjpegPreview, stopMjpegPreview } from './mjpeg.js?v=4.12';
 import {
     createBackoffState, recordFailure, recordSuccess,
     getDelay, isMaxedOut,
     freezeFrame, removeFrozenFrame,
     showReconnectOverlay, removeReconnectOverlay,
     showLoadingOverlay, removeLoadingOverlay,
-} from './reconnect.js?v=4.11';
+} from './reconnect.js?v=4.12';
 
 /** Check URL for forced MJPEG mode (Android WebView on devices with broken MSE). */
 const forceMjpeg = new URLSearchParams(location.search).get('mode') === 'mjpeg';
@@ -204,7 +204,7 @@ export async function connectCamera(cameraId, cell, state) {
 function buildProtocolOrder(preferred) {
     if (preferred === 'mse') return ['mse', 'webrtc'];
     if (preferred === 'webrtc') return ['webrtc', 'mse'];
-    return ['mse', 'webrtc']; // default: MSE first (reliable), WebRTC as fallback
+    return ['webrtc', 'mse']; // default: WebRTC first (lower latency), MSE as fallback
 }
 
 /**
